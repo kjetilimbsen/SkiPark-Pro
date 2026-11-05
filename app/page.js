@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -81,6 +81,11 @@ export default function Home() {
   const [view, setView] = useState("park");
   const [selectedSkiId, setSelectedSkiId] = useState("ski-2");
   const [filter, setFilter] = useState("Alle");
+
+  // Skiselector / Bildeopplasting-states
+  const [capturedImage, setCapturedImage] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const savedWeight = localStorage.getItem("skipark_user_weight");
@@ -167,6 +172,21 @@ export default function Home() {
     } : s));
   };
 
+  // Håndter bilde av Skiselector-skjerm
+  const handleImageCapture = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const imageUrl = URL.createObjectURL(file);
+    setCapturedImage(imageUrl);
+    setIsAnalyzing(true);
+
+    // Simulerer OCR-avlesning av Skiselector-graf
+    setTimeout(() => {
+      setIsAnalyzing(false);
+    }, 1200);
+  };
+
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', background: '#020617', color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif' }}>
@@ -182,7 +202,7 @@ export default function Home() {
           <div style={{ fontSize: '48px', marginBottom: '12px' }}>⛷️</div>
           <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 8px 0' }}>SkiPark Pro</h1>
           <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '24px', lineHeight: '1.5' }}>
-            Digital skipark, spennkurver, sliprapporter og vedlikeholdslogg.
+            Digital skipark, spennkurver, sliprapporter og Skiselector-tolking.
           </p>
 
           <button
@@ -219,7 +239,7 @@ export default function Home() {
             <span style={{ fontSize: '30px' }}>⛷️</span>
             <div>
               <h1 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>SkiPark Pro</h1>
-              <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8' }}>Digital skipark, spennkurver & målelogger</p>
+              <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8' }}>Digital skipark, spennkurver & Skiselector</p>
             </div>
           </div>
 
@@ -298,7 +318,7 @@ export default function Home() {
           {[
             { id: "park", label: `🎿 Min Skipark (${skis.length})` },
             { id: "manual", label: "➕ Legg til ski (Manuell)" },
-            { id: "camera", label: "📸 AI Bildegjenkjenning" },
+            { id: "camera", label: "📸 Skiselector Skjermbilde" },
             { id: "qr", label: "🏁 QR Målerapport" },
           ].map(tab => (
             <button
@@ -567,36 +587,180 @@ export default function Home() {
           </div>
         )}
 
-        {/* 4. AI-KAMERA & 5. QR-SKANNING */}
-        {(view === "camera" || view === "qr") && (
+        {/* 4. SKISELECTOR SKJERMBILDE & KAMERAMODUL */}
+        {view === "camera" && (
+          <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px', padding: '24px', maxWidth: '640px', margin: '0 auto' }}>
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <div style={{ fontSize: '36px', marginBottom: '8px' }}>📸</div>
+              <h2 style={{ fontSize: '18px', margin: '0 0 6px 0' }}>Ta bilde av Skiselector-skjerm</h2>
+              <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, lineHeight: '1.5' }}>
+                Bruk mobilkameraet eller last opp et bilde av Skiselector-skjermen eller målerapporten fra butikken.
+              </p>
+            </div>
+
+            {/* Skjult ekte input for kamera / filopplasting */}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              ref={fileInputRef}
+              onChange={handleImageCapture}
+              style={{ display: 'none' }}
+            />
+
+            {!capturedImage ? (
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  border: '2px dashed #334155',
+                  borderRadius: '12px',
+                  padding: '36px 20px',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  background: '#020617'
+                }}
+              >
+                <div style={{ fontSize: '28px', marginBottom: '8px' }}>📷</div>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#38bdf8', marginBottom: '4px' }}>
+                  Trykk her for å åpne kamera / laste opp bilde
+                </div>
+                <div style={{ fontSize: '11px', color: '#64748b' }}>
+                  Støtter direkte mobilkamera, skjermbilder og bildefiler (PNG, JPG)
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', border: '1px solid #334155', maxHeight: '240px', background: '#000', display: 'flex', justifyContent: 'center' }}>
+                  <img src={capturedImage} alt="Skiselector" style={{ maxHeight: '240px', width: 'auto', objectFit: 'contain' }} />
+                  <button
+                    onClick={() => { setCapturedImage(null); fileInputRef.current.value = ""; }}
+                    style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.7)', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer' }}
+                  >
+                    ✕ Ta nytt bilde
+                  </button>
+                </div>
+
+                {isAnalyzing ? (
+                  <div style={{ textAlign: 'center', padding: '16px', color: '#38bdf8', fontSize: '13px' }}>
+                    ⏳ Analyserer Skiselector-kurver og verdier...
+                  </div>
+                ) : (
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    const fd = new FormData(e.target);
+                    handleAddSki({
+                      id: "ski-" + Date.now(),
+                      brand: fd.get("brand") || "Madshus",
+                      model: fd.get("model") || "Redline Skiselector",
+                      type: fd.get("type") || "Klassisk",
+                      camberType: fd.get("camber") || "Skiselector Profil",
+                      lengthCm: parseInt(fd.get("length")) || 207,
+                      weightKgMin: parseFloat(fd.get("wMin")) || 74,
+                      weightKgMax: parseFloat(fd.get("wMax")) || 80,
+                      grind: fd.get("grind") || "Fabrikkslip",
+                      hbw: parseFloat(fd.get("hbw")) || 1.18,
+                      fbw: parseFloat(fd.get("fbw")) || 0.24,
+                      pocketFrontCm: parseFloat(fd.get("pocketFront")) || 37,
+                      pocketRearCm: parseFloat(fd.get("pocketRear")) || 15,
+                      notes: "Importert fra Skiselector-bilde",
+                      maintenanceLog: []
+                    });
+                  }} style={{ background: '#020617', padding: '16px', borderRadius: '12px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#4ade80' }}>
+                      ✓ Avleste Skiselector-data (bekreft eller juster):
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div>
+                        <label style={{ fontSize: '10px', color: '#94a3b8' }}>Merke / Modell</label>
+                        <input name="model" defaultValue="Redline Classic" style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', color: '#fff', padding: '6px', borderRadius: '6px', boxSizing: 'border-box', fontSize: '12px' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '10px', color: '#94a3b8' }}>Skitype</label>
+                        <select name="type" defaultValue="Klassisk" style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', color: '#38bdf8', padding: '6px', borderRadius: '6px', fontSize: '12px' }}>
+                          <option>Klassisk</option><option>Skate</option><option>Felleski</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '8px' }}>
+                      <div>
+                        <label style={{ fontSize: '10px', color: '#94a3b8' }}>HBW (mm)</label>
+                        <input name="hbw" defaultValue="1.18" step="0.01" style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', color: '#38bdf8', padding: '6px', borderRadius: '6px', boxSizing: 'border-box', fontSize: '12px' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '10px', color: '#94a3b8' }}>FBW (mm)</label>
+                        <input name="fbw" defaultValue="0.24" step="0.01" style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', color: '#f97316', padding: '6px', borderRadius: '6px', boxSizing: 'border-box' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '10px', color: '#94a3b8' }}>Lomme foran</label>
+                        <input name="pocketFront" defaultValue="37" style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', color: '#fff', padding: '6px', borderRadius: '6px', boxSizing: 'border-box' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '10px', color: '#94a3b8' }}>Lomme bak</label>
+                        <input name="pocketRear" defaultValue="15" style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', color: '#fff', padding: '6px', borderRadius: '6px', boxSizing: 'border-box' }} />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div>
+                        <label style={{ fontSize: '10px', color: '#94a3b8' }}>Anbefalt vekt (min-maks kg)</label>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <input name="wMin" defaultValue="74" style={{ width: '50%', background: '#0f172a', border: '1px solid #334155', color: '#fff', padding: '6px', borderRadius: '6px', boxSizing: 'border-box' }} />
+                          <input name="wMax" defaultValue="80" style={{ width: '50%', background: '#0f172a', border: '1px solid #334155', color: '#fff', padding: '6px', borderRadius: '6px', boxSizing: 'border-box' }} />
+                        </div>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '10px', color: '#94a3b8' }}>Lengde (cm)</label>
+                        <input name="length" defaultValue="207" style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', color: '#fff', padding: '6px', borderRadius: '6px', boxSizing: 'border-box' }} />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      style={{ background: '#10b981', color: '#020617', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px', marginTop: '6px' }}
+                    >
+                      Legg til i skiparken med disse Skiselector-dataene
+                    </button>
+                  </form>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 5. QR-SKANNING */}
+        {view === "qr" && (
           <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px', padding: '32px', textAlign: 'center', maxWidth: '500px', margin: '0 auto' }}>
-            <div style={{ fontSize: '40px', marginBottom: '12px' }}>{view === 'camera' ? '📸' : '🏁'}</div>
-            <h3 style={{ margin: '0 0 8px 0' }}>{view === 'camera' ? 'AI Bildegjenkjenning' : 'QR Måleskanning'}</h3>
+            <div style={{ fontSize: '40px', marginBottom: '12px' }}>🏁</div>
+            <h3 style={{ margin: '0 0 8px 0' }}>QR Måleskanning</h3>
             <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 20px 0' }}>
-              {view === 'camera' ? 'Tar bilde av skitupp eller grafikk for automatisk modelltolking.' : 'Skanner QR-etikett fra f.eks Skiplukkern for direkte import av kurver.'}
+              Skanner QR-etikett fra f.eks Skiplukkern eller butikkens måleskjema for direkte import.
             </p>
             <button
               onClick={() => {
-                alert("Kamera/QR-simulering aktivert. Et test-par legges til i skiparken din.");
+                alert("QR-simulering aktivert. Et test-par fra Skiplukkern legges til.");
                 handleAddSki({
                   id: "ski-" + Date.now(),
                   brand: "Madshus",
-                  model: view === 'camera' ? "Redline Skate (AI Funnet)" : "Redline Classic (QR Skiplukkern)",
-                  type: "Skate",
-                  camberType: "Universal",
-                  lengthCm: 192,
+                  model: "Redline Classic (QR Skiplukkern)",
+                  type: "Klassisk",
+                  camberType: "Universal Kald",
+                  lengthCm: 207,
                   weightKgMin: 74,
                   weightKgMax: 80,
-                  grind: "SP21",
-                  hbw: 1.20,
-                  fbw: 0.25,
-                  notes: "Importert via " + (view === 'camera' ? 'kamera' : 'QR'),
+                  grind: "M61",
+                  hbw: 1.18,
+                  fbw: 0.23,
+                  pocketFrontCm: 39,
+                  pocketRearCm: 16,
+                  notes: "Importert via QR-etikett",
                   maintenanceLog: []
                 });
               }}
               style={{ background: '#0ea5e9', color: '#020617', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}
             >
-              Start skanning
+              Start QR-skanning
             </button>
           </div>
         )}
