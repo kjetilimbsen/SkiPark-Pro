@@ -83,7 +83,6 @@ export default function Home() {
   const [filter, setFilter] = useState("Alle");
 
   useEffect(() => {
-    // Hent lokal vekt dersom lagret
     const savedWeight = localStorage.getItem("skipark_user_weight");
     if (savedWeight) {
       setUserWeight(parseFloat(savedWeight));
@@ -99,7 +98,6 @@ export default function Home() {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
       if (user) {
-        // Hent profilvekt fra Supabase
         const { data: profile } = await supabase
           .from('profiles')
           .select('weight_kg')
@@ -215,7 +213,7 @@ export default function Home() {
     <div style={{ minHeight: '100vh', background: '#020617', color: '#f8fafc', padding: '24px 20px', fontFamily: 'sans-serif', boxSizing: 'border-box' }}>
       <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
 
-        {/* Topplinje med dynamisk vekt-editor */}
+        {/* Topplinje */}
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1e293b', paddingBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span style={{ fontSize: '30px' }}>⛷️</span>
@@ -230,7 +228,6 @@ export default function Home() {
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e' }}></span>
               <span>{user.user_metadata?.full_name || user.email}</span>
 
-              {/* Vekt-knapp / redigeringsfelt */}
               {!isEditingWeight ? (
                 <button
                   onClick={() => setIsEditingWeight(true)}
@@ -406,32 +403,4 @@ export default function Home() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <button
               onClick={() => setView("park")}
-              style={{ background: 'transparent', border: 'none', color: '#38bdf8', cursor: 'pointer', textAlign: 'left', padding: 0, fontSize: '13px' }}
-            >
-              ← Tilbake til skiparken
-            </button>
-
-            <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px', padding: '20px' }}>
-              <span style={{ fontSize: '11px', background: '#082f49', color: '#38bdf8', padding: '3px 8px', borderRadius: '4px', fontFamily: 'monospace' }}>
-                {activeSki.type} • {activeSki.lengthCm} cm
-              </span>
-              <h2 style={{ fontSize: '22px', margin: '10px 0 4px 0' }}>{activeSki.brand} {activeSki.model}</h2>
-              <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0 }}>Profil: {activeSki.camberType} | Slip: {activeSki.grind}</p>
-            </div>
-
-            {/* Spennkurve SVG */}
-            <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px', padding: '20px' }}>
-              <h3 style={{ margin: '0 0 6px 0', fontSize: '16px' }}>Spennkurve & Smørelomme</h3>
-              <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 16px 0' }}>Viser spennets profil mot din nåværende vekt på {userWeight} kg.</p>
-
-              <div style={{ background: '#020617', padding: '16px', borderRadius: '12px', border: '1px solid #1e293b' }}>
-                <svg viewBox="0 0 800 140" style={{ width: '100%', height: '120px' }}>
-                  <line x1="20" y1="110" x2="780" y2="110" stroke="#334155" strokeWidth="2" strokeDasharray="4" />
-                  <path d="M 60 108 Q 400 30 740 108" fill="none" stroke="#38bdf8" strokeWidth="3" />
-                  <path d="M 120 109 Q 400 85 680 109" fill="none" stroke="#f97316" strokeWidth="2.5" />
-                  <line x1="400" y1="20" x2="400" y2="110" stroke="#94a3b8" strokeWidth="1" strokeDasharray="2" />
-                  <rect x="270" y="106" width="200" height="7" fill="#22c55e" opacity="0.6" rx="2" />
-                </svg>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontFamily: 'monospace', color: '#cbd5e1', paddingTop: '10px', borderTop: '1px solid #0f172a' }}>
-                  <div>HBW: <strong style={{ color: '#38bdf8' }}>{activeSki.h
+              style={{ background: 'transparent', border: 'none', color: '#38bdf8', cursor: 'pointer
