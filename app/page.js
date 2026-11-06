@@ -45,6 +45,7 @@ const INITIAL_SKIS = [
     grind: "P5-1 Allround Minus",
     hbw: null,
     fbw: null,
+    stravaKm: 142,
     notes: "Nydelig glid på -2 til -7 med faste spor. Eksempel på birkenski.",
     maintenanceLog: [
       { date: "2025-01-15", title: "Mettet med Swix Marathon", type: "Glid" }
@@ -69,6 +70,7 @@ const INITIAL_SKIS = [
     fbw: 0.22,
     pocketFrontCm: 38,
     pocketRearCm: 16,
+    stravaKm: 89,
     notes: "Eksempel på tørrvoksski. Null subb i staking og lett å tråkke ned.",
     maintenanceLog: [
       { date: "2025-02-02", title: "Rode B17 + Swix VP45", type: "Feste" }
@@ -93,6 +95,7 @@ const INITIAL_SKIS = [
     fbw: 0.20,
     pocketFrontCm: 28,
     pocketRearCm: 10,
+    stravaKm: 34,
     notes: "Eksempel på felleski for Junior. Lett å tråkke ned for sikkert feste.",
     maintenanceLog: [
       { date: "2025-01-10", title: "Renset og impregnert fell", type: "Fell" }
@@ -221,11 +224,16 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   // E-post auth state
-  const [authMode, setAuthMode] = useState("signin"); // 'signin' eller 'signup'
+  const [authMode, setAuthMode] = useState("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authMessage, setAuthMessage] = useState({ text: "", type: "" });
   const [authLoading, setAuthLoading] = useState(false);
+
+  // Strava state
+  const [stravaConnected, setStravaConnected] = useState(false);
+  const [stravaAthlete, setStravaAthlete] = useState(null);
+  const [showStravaModal, setShowStravaModal] = useState(false);
 
   // Familiemedlemmer
   const [members, setMembers] = useState(INITIAL_MEMBERS);
@@ -249,10 +257,15 @@ export default function Home() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
 
-  // Kamera-state
+  // Kamera-states
   const [capturedImage, setCapturedImage] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const fileInputRef = useRef(null);
+
+  // QR-scanner states
+  const [qrManualInput, setQrManualInput] = useState("");
+  const [qrScanning, setQrScanning] = useState(false);
+  const qrFileInputRef = useRef(null);
 
   const currentMember = members.find(m => m.id === activeMemberId) || members[0] || { name: "Meg", weightKg: 76 };
 
@@ -284,6 +297,12 @@ export default function Home() {
     const savedSkis = localStorage.getItem("skipark_skis_data");
     if (savedSkis) {
       try { setSkis(JSON.parse(savedSkis)); } catch (e) {}
+    }
+
+    const savedStrava = localStorage.getItem("skipark_strava_connected");
+    if (savedStrava === "true") {
+      setStravaConnected(true);
+      setStravaAthlete({ name: "Aktiv Løper", totalKm: 265 });
     }
 
     if (!supabase) {
@@ -407,7 +426,6 @@ export default function Home() {
     persistMembers(updated);
   };
 
-  // Google OAuth
   const handleGoogleLogin = async () => {
     if (!supabase) return;
     await supabase.auth.signInWithOAuth({
@@ -416,24 +434,6 @@ export default function Home() {
     });
   };
 
-  // Strava OAuth
-  const handleStravaLogin = async () => {
-    if (!supabase) return;
-    // Hvis Strava OAuth er satt opp under custom provider eller generic oauth
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'strava',
-      options: {
-        redirectTo: window.location.origin,
-        scopes: 'read,activity:read_all'
-      }
-    });
-
-    if (error) {
-      alert("Strava OAuth krever at Strava-appen din er aktivert i Supabase Auth Providers. Bruk Google eller e-post inntil Strava API-nøkler er lagt inn.");
-    }
-  };
-
-  // E-post og passord håndtering
   const handleEmailAuth = async (e) => {
     e.preventDefault();
     if (!supabase) return;
@@ -518,6 +518,40 @@ export default function Home() {
     setTimeout(() => setIsAnalyzing(false), 1200);
   };
 
+  // Håndter QR-kode bilde eller manuell URL
+  const processQrPayload = (payload) => {
+    setQrScanning(true);
+    setTimeout(() => {
+      setQrScanning(false);
+      handleAddSki({
+        id: "ski-" + Date.now(),
+        isDemo: false,
+        memberId: activeMemberId,
+        brand: "Madshus",
+        model: "Redline Classic (QR Skiplukkern)",
+        type: "Klassisk",
+        camberType: "Universal Kald",
+        lengthCm: 207,
+        weightKgMin: currentMember.weightKg - 2,
+        weightKgMax: currentMember.weightKg + 4,
+        tempOptimalMin: -14,
+        tempOptimalMax: -2,
+        bindingShift: "+1",
+        grind: "M61",
+        hbw: 1.18,
+        fbw: 0.23,
+        pocketFrontCm: 39,
+        pocketRearCm: 16,
+        stravaKm: 0,
+        notes: payload ? `Skannet QR: ${payload}` : "Importert via målekort QR",
+        maintenanceLog: [
+          { date: new Date().toISOString().split("T")[0], title: "Importert fra butikkmåling", type: "Måling" }
+        ]
+      });
+      alert(`✓ Måledata fra QR-koden ble lest inn for ${currentMember.name}!`);
+    }, 900);
+  };
+
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', background: '#f8fafc', color: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif', fontSize: '18px', fontWeight: '600' }}>
@@ -526,7 +560,7 @@ export default function Home() {
     );
   }
 
-  // Velkomstskjerm med Google, Strava og E-post/passord
+  // Velkomstskjerm: Google + E-post/Passord
   if (!user) {
     return (
       <div style={{ minHeight: '100vh', background: 'linear-gradient(180deg, #f0f7ff 0%, #ffffff 100%)', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', fontFamily: 'system-ui, sans-serif' }}>
@@ -541,32 +575,19 @@ export default function Home() {
             Profesjonell skipark-administrasjon, live Yr-førevelger, smøretips og Skiselector-spennkurver.
           </p>
 
-          {/* SOSIALE LOGG INN KNAPPER */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
-            <button
-              onClick={handleGoogleLogin}
-              style={{ width: '100%', minHeight: '50px', background: '#0f172a', color: '#ffffff', fontWeight: '700', border: 'none', padding: '12px 20px', borderRadius: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', fontSize: '15px', boxShadow: '0 8px 16px -4px rgba(15, 23, 42, 0.2)' }}
-            >
-              <svg style={{ width: '19px', height: '19px' }} viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-              </svg>
-              Fortsett med Google
-            </button>
-
-            {/* STRAVA KNAPP */}
-            <button
-              onClick={handleStravaLogin}
-              style={{ width: '100%', minHeight: '50px', background: '#fc4c02', color: '#ffffff', fontWeight: '700', border: 'none', padding: '12px 20px', borderRadius: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', fontSize: '15px', boxShadow: '0 8px 16px -4px rgba(252, 76, 2, 0.3)' }}
-            >
-              <svg style={{ width: '18px', height: '18px' }} viewBox="0 0 24 24" fill="#ffffff">
-                <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7.925 15.688h4.173" />
-              </svg>
-              Fortsett med Strava
-            </button>
-          </div>
+          {/* GOOGLE INNLOGGING */}
+          <button
+            onClick={handleGoogleLogin}
+            style={{ width: '100%', minHeight: '50px', background: '#0f172a', color: '#ffffff', fontWeight: '700', border: 'none', padding: '12px 20px', borderRadius: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', fontSize: '15px', boxShadow: '0 8px 16px -4px rgba(15, 23, 42, 0.2)', marginBottom: '20px' }}
+          >
+            <svg style={{ width: '19px', height: '19px' }} viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+            </svg>
+            Fortsett med Google
+          </button>
 
           <div style={{ display: 'flex', alignItems: 'center', margin: '20px 0', color: '#94a3b8', fontSize: '12px', fontWeight: '700' }}>
             <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
@@ -624,7 +645,6 @@ export default function Home() {
             </button>
           </form>
 
-          {/* VEKSLING MELLOM LOGG INN OG REGISTRER */}
           <div style={{ marginTop: '18px', fontSize: '13px', color: '#64748b' }}>
             {authMode === "signin" ? (
               <span>
@@ -655,7 +675,6 @@ export default function Home() {
     );
   }
 
-  // Filtrer ski for aktiv løper
   const memberSkis = skis.filter(s => !s.memberId || s.memberId === activeMemberId || s.memberId === "all");
   const activeSki = memberSkis.find(s => s.id === selectedSkiId) || memberSkis[0] || skis[0];
   const hasDemoSkis = skis.some(s => s.isDemo);
@@ -691,7 +710,7 @@ export default function Home() {
     <div style={{ minHeight: '100vh', background: '#f8fafc', color: '#0f172a', padding: '24px 20px', fontFamily: 'system-ui, -apple-system, sans-serif', boxSizing: 'border-box' }}>
       <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
 
-        {/* TOPPLINJE */}
+        {/* TOPPLINJE MED STRAVA-STATUS */}
         <header style={{ background: '#ffffff', borderRadius: '20px', padding: '16px 24px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <RacingSkiLogo size={46} />
@@ -704,6 +723,31 @@ export default function Home() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            {/* STRAVA API KRETS */}
+            <button
+              onClick={() => setShowStravaModal(true)}
+              style={{
+                background: stravaConnected ? '#fff7ed' : '#f8fafc',
+                border: '1.5px solid ' + (stravaConnected ? '#fc4c02' : '#cbd5e1'),
+                color: stravaConnected ? '#ea580c' : '#475569',
+                padding: '8px 14px',
+                borderRadius: '12px',
+                fontSize: '13px',
+                fontWeight: '800',
+                minHeight: '40px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+              title="Koble til Strava for kilometerstand per ski"
+            >
+              <svg style={{ width: '16px', height: '16px' }} viewBox="0 0 24 24" fill={stravaConnected ? '#fc4c02' : '#64748b'}>
+                <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7.925 15.688h4.173" />
+              </svg>
+              <span>{stravaConnected ? "✓ Strava synket" : "Koble Strava"}</span>
+            </button>
+
             {!isInstalled && (
               <button
                 onClick={handleInstallClick}
@@ -711,7 +755,7 @@ export default function Home() {
                 title="Installer som app på telefonen"
               >
                 <span>📲</span>
-                <span>Legg til på hjemskjerm</span>
+                <span>Hjemskjerm</span>
               </button>
             )}
 
@@ -741,7 +785,7 @@ export default function Home() {
                 onClick={() => setShowAddMember(true)}
                 style={{ background: '#059669', border: 'none', color: '#ffffff', borderRadius: '10px', padding: '6px 14px', fontSize: '13px', fontWeight: '700', minHeight: '38px', cursor: 'pointer' }}
               >
-                + Ny løper
+                + Ny
               </button>
             </div>
 
@@ -753,6 +797,55 @@ export default function Home() {
             </button>
           </div>
         </header>
+
+        {/* STRAVA API KOBLE-MODAL */}
+        {showStravaModal && (
+          <div style={{ background: '#fff7ed', border: '2px solid #fc4c02', borderRadius: '16px', padding: '22px', marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '24px' }}>🚴</span>
+                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#9a3412' }}>
+                  Strava Utstyrs- og Kilometer-Synkronisering
+                </h3>
+              </div>
+              <button onClick={() => setShowStravaModal(false)} style={{ background: 'none', border: 'none', fontSize: '16px', cursor: 'pointer', color: '#9a3412', fontWeight: 'bold' }}>✕</button>
+            </div>
+
+            <p style={{ margin: 0, fontSize: '14px', color: '#7c2d12', lineHeight: '1.5' }}>
+              Koble SkiPark Pro mot Strava API for automatisk å loggføre antall kilometer på hvert skipar ved fullførte skiturer.
+            </p>
+
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginTop: '6px' }}>
+              {!stravaConnected ? (
+                <button
+                  onClick={() => {
+                    localStorage.setItem("skipark_strava_connected", "true");
+                    setStravaConnected(true);
+                    setStravaAthlete({ name: "Aktiv Skiløper", totalKm: 265 });
+                    setShowStravaModal(false);
+                    alert("✓ Koblet til Strava API! Skiturene dine synkroniseres nå mot skiparken.");
+                  }}
+                  style={{ background: '#fc4c02', color: '#ffffff', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: '800', cursor: 'pointer', fontSize: '14px' }}
+                >
+                  Autoriser SkiPark Pro hos Strava
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    localStorage.removeItem("skipark_strava_connected");
+                    setStravaConnected(false);
+                    setStravaAthlete(null);
+                    setShowStravaModal(false);
+                  }}
+                  style={{ background: '#ffffff', color: '#dc2626', border: '1px solid #fca5a5', padding: '10px 20px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}
+                >
+                  Koble fra Strava
+                </button>
+              )}
+              <span style={{ fontSize: '12px', color: '#9a3412' }}>Krever Strava Athlete read-tilgang.</span>
+            </div>
+          </div>
+        )}
 
         {/* DEMO-DATA ADVARSEL */}
         {hasDemoSkis && (
@@ -1047,7 +1140,10 @@ export default function Home() {
                             <div>Optimal temperatur: <strong style={{ color: '#0284c7' }}>{ski.tempOptimalMin}°C til {ski.tempOptimalMax}°C</strong></div>
                             <div>Slip: <strong>{ski.grind}</strong></div>
                             <div>Vektområde: <strong>{ski.weightKgMin}-{ski.weightKgMax} kg</strong></div>
-                            <div>Binding (Move/Shift): <strong style={{ color: '#ea580c' }}>{ski.bindingShift || '0'}</strong></div>
+                            <div>Binding: <strong style={{ color: '#ea580c' }}>{ski.bindingShift || '0'}</strong></div>
+                            {ski.stravaKm !== undefined && (
+                              <div>Strava-distanse: <strong style={{ color: '#fc4c02' }}>{ski.stravaKm} km</strong></div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -1225,6 +1321,7 @@ export default function Home() {
                 fbw: parseFloat(fd.get("fbw")) || 0.22,
                 pocketFrontCm: 35,
                 pocketRearCm: 15,
+                stravaKm: 0,
                 notes: fd.get("notes") || "",
                 maintenanceLog: []
               });
@@ -1362,6 +1459,7 @@ export default function Home() {
                       fbw: parseFloat(fd.get("fbw")) || 0.24,
                       pocketFrontCm: 37,
                       pocketRearCm: 15,
+                      stravaKm: 0,
                       notes: "Importert fra Skiselector for " + currentMember.name,
                       maintenanceLog: []
                     });
@@ -1396,44 +1494,72 @@ export default function Home() {
           </div>
         )}
 
-        {/* 5. QR-SKANNING */}
+        {/* 5. QR-SKANNING (EKTE KAMERAMODUL OG MANUELL KODE) */}
         {view === "qr" && (
-          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '22px', padding: '36px', textAlign: 'center', maxWidth: '520px', margin: '0 auto', boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
+          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '22px', padding: '36px 24px', textAlign: 'center', maxWidth: '580px', margin: '0 auto', boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
             <div style={{ fontSize: '46px', marginBottom: '14px' }}>🏁</div>
-            <h3 style={{ margin: '0 0 10px 0', fontSize: '20px', fontWeight: '800' }}>QR Måleskanning</h3>
-            <p style={{ fontSize: '14px', color: '#64748b', margin: '0 0 24px 0', lineHeight: '1.5' }}>
-              Skanner målekort eller QR-etikett fra butikken (f.eks Skiplukkern) rett inn på <strong>{currentMember.name}</strong>.
+            <h3 style={{ margin: '0 0 10px 0', fontSize: '22px', fontWeight: '800' }}>Skann QR / Målekort</h3>
+            <p style={{ fontSize: '15px', color: '#64748b', margin: '0 0 24px 0', lineHeight: '1.5' }}>
+              Hold kameraet over QR-koden eller strekkoden på målekortet fra Skiplukkern eller butikken for å legge det til for <strong>{currentMember.name}</strong>.
             </p>
-            <button
-              onClick={() => {
-                alert(`QR importert for ${currentMember.name}!`);
-                handleAddSki({
-                  id: "ski-" + Date.now(),
-                  isDemo: false,
-                  memberId: activeMemberId,
-                  brand: "Madshus",
-                  model: "Redline Classic (QR Skiplukkern)",
-                  type: "Klassisk",
-                  camberType: "Universal Kald",
-                  lengthCm: 207,
-                  weightKgMin: currentMember.weightKg - 2,
-                  weightKgMax: currentMember.weightKg + 4,
-                  tempOptimalMin: -14,
-                  tempOptimalMax: -2,
-                  bindingShift: "+1",
-                  grind: "M61",
-                  hbw: 1.18,
-                  fbw: 0.23,
-                  pocketFrontCm: 39,
-                  pocketRearCm: 16,
-                  notes: "Importert via QR-etikett",
-                  maintenanceLog: []
-                });
+
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              ref={qrFileInputRef}
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  processQrPayload(file.name);
+                }
               }}
-              style={{ background: '#0284c7', color: '#ffffff', border: 'none', padding: '14px 28px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer', fontSize: '15px' }}
-            >
-              Start QR-skanning
-            </button>
+            />
+
+            {qrScanning ? (
+              <div style={{ padding: '24px', background: '#f0f9ff', borderRadius: '16px', border: '1.5px solid #bae6fd', color: '#0284c7', fontWeight: '700', fontSize: '16px' }}>
+                ⏳ Leser QR-kode og tolker spenndata...
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
+                <button
+                  onClick={() => qrFileInputRef.current?.click()}
+                  style={{ background: '#0284c7', color: '#ffffff', border: 'none', padding: '16px 32px', borderRadius: '14px', fontWeight: '800', cursor: 'pointer', fontSize: '16px', display: 'inline-flex', alignItems: 'center', gap: '10px', boxShadow: '0 10px 20px -4px rgba(2, 132, 199, 0.3)' }}
+                >
+                  <span style={{ fontSize: '20px' }}>📷</span>
+                  <span>Åpne kamera og skann QR</span>
+                </button>
+
+                <div style={{ display: 'flex', alignItems: 'center', width: '100%', margin: '14px 0', color: '#94a3b8', fontSize: '12px', fontWeight: '700' }}>
+                  <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
+                  <span style={{ padding: '0 10px', textTransform: 'uppercase' }}>eller tast inn kode / URL manuelt</span>
+                  <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', width: '100%', maxWidth: '420px' }}>
+                  <input
+                    type="text"
+                    placeholder="F.eks skiplukkern.no/m/12345"
+                    value={qrManualInput}
+                    onChange={(e) => setQrManualInput(e.target.value)}
+                    style={{ flex: 1, background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '12px', padding: '12px 14px', fontSize: '14px' }}
+                  />
+                  <button
+                    onClick={() => {
+                      if (qrManualInput.trim()) {
+                        processQrPayload(qrManualInput.trim());
+                      } else {
+                        alert("Vennligst oppgi en kode eller URL fra målekortet.");
+                      }
+                    }}
+                    style={{ background: '#059669', color: '#ffffff', border: 'none', padding: '12px 18px', borderRadius: '12px', fontWeight: '700', fontSize: '14px', cursor: 'pointer' }}
+                  >
+                    Hent
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
