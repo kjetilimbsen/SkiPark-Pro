@@ -238,12 +238,14 @@ export default function Home() {
   const [showStravaModal, setShowStravaModal] = useState(false);
   const [unassignedActivities, setUnassignedActivities] = useState([]);
 
-  // Familiemedlemmer
+  // Familiemedlemmer state
   const [members, setMembers] = useState(INITIAL_MEMBERS);
   const [activeMemberId, setActiveMemberId] = useState("m-1");
   const [showAddMember, setShowAddMember] = useState(false);
+  const [newMemberName, setNewMemberName] = useState("");
+  const [newMemberWeight, setNewMemberWeight] = useState("");
 
-  // Skipark
+  // Skipark state
   const [skis, setSkis] = useState(INITIAL_SKIS);
   const [view, setView] = useState("park");
   const [selectedSkiId, setSelectedSkiId] = useState("ski-2");
@@ -520,7 +522,7 @@ export default function Home() {
     persistSkis(updated);
   };
 
-  // EKTE GEMINI AI BILDEANALYSE AV SKISELECTOR (MED FEILMELDING VISNING)
+  // GEMINI AI BILDEANALYSE AV SKISELECTOR
   const handleImageCapture = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -554,7 +556,7 @@ export default function Home() {
           if (json.data && (json.data.hbw || json.data.brand || json.data.model)) {
             setAnalyzedSkiData(json.data);
           } else {
-            setAiError("Gemini fant ingen tydelige Skiselector-verdier i bildet. Kontroller at bildet viser tallene tydelig.");
+            setAiError("Fant ingen Skiselector-verdier i bildet. Kontroller at bildet viser tallene tydelig.");
           }
           setIsAnalyzing(false);
         } catch (fetchErr) {
@@ -568,6 +570,7 @@ export default function Home() {
     }
   };
 
+  // STRAVA METODE 1: HASHTAG-MATCHING
   const handleSyncStravaActivities = () => {
     const incomingActivities = [
       { id: "act-1", title: "Kveldstur Sjusjøen #speedmax", distanceKm: 24.5, date: "I dag" },
@@ -658,7 +661,7 @@ export default function Home() {
     );
   }
 
-  // Velkomstskjerm
+  // Velkomstskjerm hvis ikke logget inn
   if (!user) {
     return (
       <div style={{ minHeight: '100vh', background: 'linear-gradient(180deg, #f0f7ff 0%, #ffffff 100%)', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', fontFamily: 'system-ui, sans-serif' }}>
@@ -805,7 +808,7 @@ export default function Home() {
     <div style={{ minHeight: '100vh', background: '#f8fafc', color: '#0f172a', padding: '24px 20px', fontFamily: 'system-ui, -apple-system, sans-serif', boxSizing: 'border-box' }}>
       <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
 
-        {/* TOPPLINJE */}
+        {/* TOPPLINJE MED FAMILIEVELGER OG STRAVA */}
         <header style={{ background: '#ffffff', borderRadius: '20px', padding: '16px 24px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <RacingSkiLogo size={46} />
@@ -892,7 +895,82 @@ export default function Home() {
           </div>
         </header>
 
-        {/* STRAVA METODE 1 MODAL */}
+        {/* DIALOG FOR NYTT FAMILIEMEDLEM / LØPER */}
+        {showAddMember && (
+          <div style={{ background: '#eff6ff', border: '1.5px solid #93c5fd', borderRadius: '18px', padding: '20px 24px', marginTop: '16px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.06)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '20px' }}>👨‍👩‍👧‍👦</span>
+              <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#1e3a8a' }}>
+                Legg til familiemedlem eller utøver
+              </h4>
+            </div>
+
+            <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#1e40af', lineHeight: '1.5' }}>
+              💡 <strong>Slik fungerer det:</strong> Hver utøver får sin egen skipark. Dagens skivelger, spennkurver (HBW/FBW) og smøretips regnes automatisk ut basert på vekten til den løperen du har valgt i menyen over.
+            </p>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!newMemberName.trim()) {
+                  alert("Vennligst oppgi et navn på løperen.");
+                  return;
+                }
+                const weightNum = parseFloat(newMemberWeight);
+                if (isNaN(weightNum) || weightNum <= 0) {
+                  alert("Vennligst oppgi en gyldig vekt i kg.");
+                  return;
+                }
+                handleAddMember(newMemberName.trim(), weightNum);
+                setNewMemberName("");
+                setNewMemberWeight("");
+              }}
+              style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}
+            >
+              <input
+                type="text"
+                placeholder="Fornavn (f.eks. Anna)"
+                value={newMemberName}
+                onChange={(e) => setNewMemberName(e.target.value)}
+                style={{ background: '#ffffff', border: '1.5px solid #cbd5e1', color: '#0f172a', padding: '10px 14px', borderRadius: '12px', fontSize: '14px', minWidth: '180px', flex: '1 1 180px' }}
+                autoFocus
+              />
+
+              <div style={{ display: 'flex', alignItems: 'center', background: '#ffffff', border: '1.5px solid #cbd5e1', borderRadius: '12px', padding: '0 12px', minWidth: '120px' }}>
+                <input
+                  type="number"
+                  step="0.5"
+                  placeholder="Vekt"
+                  value={newMemberWeight}
+                  onChange={(e) => setNewMemberWeight(e.target.value)}
+                  style={{ width: '70px', border: 'none', color: '#0f172a', padding: '10px 0', fontSize: '14px', outline: 'none' }}
+                />
+                <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '700' }}>kg</span>
+              </div>
+
+              <button
+                type="submit"
+                style={{ background: '#059669', color: '#ffffff', border: 'none', padding: '11px 22px', borderRadius: '12px', fontWeight: '800', fontSize: '14px', cursor: 'pointer', minHeight: '42px', boxShadow: '0 4px 10px rgba(5, 150, 105, 0.2)' }}
+              >
+                ✓ Lagre løper
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddMember(false);
+                  setNewMemberName("");
+                  setNewMemberWeight("");
+                }}
+                style={{ background: 'transparent', color: '#64748b', border: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: '600', padding: '8px 12px' }}
+              >
+                Avbryt
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* STRAVA MODAL (METODE 1) */}
         {showStravaModal && (
           <div style={{ background: '#fff7ed', border: '2px solid #fc4c02', borderRadius: '18px', padding: '24px', marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -906,7 +984,7 @@ export default function Home() {
             </div>
 
             <p style={{ margin: 0, fontSize: '14px', color: '#7c2d12', lineHeight: '1.6' }}>
-              Matcher skiene dine automatisk ved hjelp av <strong>#kode</strong> i tittel eller beskrivelse på Strava-økta.
+              Siden Strava ikke har ski under «Gear», matcher SkiPark Pro skiene dine automatisk ved hjelp av en <strong>#kode</strong> i tittel på økta (f.eks <em>"Morgentur #speedmax"</em>).
             </p>
 
             <div style={{ background: '#ffffff', border: '1px solid #fed7aa', padding: '14px 18px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -995,7 +1073,7 @@ export default function Home() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{ background: '#f59e0b', color: '#ffffff', fontSize: '11px', fontWeight: '800', padding: '3px 8px', borderRadius: '6px' }}>DEMO-DATA</span>
               <span style={{ fontSize: '13px', color: '#92400e', fontWeight: '500' }}>
-                Skiparken inneholder forhåndsutfylte eksempel-ski så du kan teste funksjonene. Dette er <strong>ikke</strong> andre brukeres data.
+                Skiparken inneholder forhåndsutfylte eksempel-ski så du kan teste funksjonene.
               </span>
             </div>
             <button
@@ -1359,7 +1437,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Notater og Logg */}
+            {/* Notater og Smørelogg */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
               <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
                 <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: '800' }}>📝 Erfaringer & Førenotater</h4>
