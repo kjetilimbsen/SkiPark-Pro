@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
 export async function POST(req) {
   try {
     const rawKey = process.env.GEMINI_API_KEY;
@@ -19,6 +17,33 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Ingen bildedata mottatt' }, { status: 400 });
     }
 
+    // 1. Spør Google API hvilke modeller som er aktive og støtter generateContent
+    const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`;
+    const listRes = await fetch(listUrl, {
+      headers: { 'x-goog-api-key': apiKey }
+    });
+
+    if (!listRes.ok) {
+      const listErr = await listRes.text();
+      return NextResponse.json({ error: `Kunne ikke liste modeller (${listRes.status}): ${listErr}` }, { status: listRes.status });
+    }
+
+    const listData = await listRes.json();
+    const availableModels = (listData.models || [])
+      .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
+      .map(m => m.name.replace(/^models\//, ''));
+
+    if (availableModels.length === 0) {
+      return NextResponse.json({ error: 'Ingen tilgjengelige modeller funnet for denne API-nøkkelen.' }, { status: 500 });
+    }
+
+    // Sorter slik at flash-modeller prioriteres først
+    const sortedModels = availableModels.sort((a, b) => {
+      const aFlash = a.toLowerCase().includes('flash') ? 1 : 0;
+      const bFlash = b.toLowerCase().includes('flash') ? 1 : 0;
+      return bFlash - aFlash;
+    });
+
     const prompt = `
 Dette er et bilde av en Skiselector målestasjon-skjerm eller målerapport for langrennsski.
 Analyser bildet og trekk ut følgende data med høy presisjon:
@@ -33,7 +58,7 @@ Analyser bildet og trekk ut følgende data med høy presisjon:
 - weightMin: Anbefalt min løpervekt i kg som tall.
 - weightMax: Anbefalt maks løpervekt i kg som tall.
 
-Returner KUN gyldig JSON uten markdown-formatering eller backticks:
+Returner KUN ren JSON uten markdown-formatering, ingen backticks, kun dette JSON-objektet:
 {
   "brand": "string",
   "model": "string",
@@ -48,69 +73,49 @@ Returner KUN gyldig JSON uten markdown-formatering eller backticks:
 }
 `;
 
-    // Aktive, gyldige modeller i API-et
-    const modelsToTry = [
-      'gemini-2.5-flash',
-      'gemini-1.5-flash'
-    ];
-
     let lastError = null;
     let result = null;
 
-    for (const model of modelsToTry) {
-      // Prøv inntil 2 ganger per modell hvis Google svarer 503 (midlertidig overbelastning)
-      for (let attempt = 0; attempt < 2; attempt++) {
-        if (attempt > 0) {
-          await sleep(1500); // Vent 1,5 sekunder før retry
-        }
+    // 2. Prøv modellene som faktisk eksisterer på kontoen
+    for (const model of sortedModels) {
+      const generateUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
-
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': apiKey
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  { text: prompt },
-                  {
-                    inlineData: {
-                      mimeType: mimeType || 'image/jpeg',
-                      data: imageBase64
-                    }
+      const response = await fetch(generateUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: prompt },
+                {
+                  inlineData: {
+                    mimeType: mimeType || 'image/jpeg',
+                    data: imageBase64
                   }
-                ]
-              }
-            ],
-            generationConfig: {
-              temperature: 0.1
+                }
+              ]
             }
-          })
-        });
+          ]
+        })
+      });
 
-        if (response.ok) {
-          result = await response.json();
-          break;
-        }
-
-        const errText = await response.text();
-        lastError = `Modell ${model} feilet (${response.status}): ${errText}`;
-
-        // Hvis det ikke er overbelastning (503) eller rate limit (429), gå videre
-        if (response.status !== 503 && response.status !== 429) {
-          break;
-        }
+      if (response.ok) {
+        result = await response.json();
+        break;
       }
 
-      if (result) break;
+      const errText = await response.text();
+      lastError = `Modell ${model} feilet (${response.status}): ${errText}`;
     }
 
     if (!result) {
-      return NextResponse.json({ error: `Kunne ikke fullføre bildeanalysen. ${lastError}` }, { status: 503 });
+      return NextResponse.json({ 
+        error: `Ingen av de tilgjengelige modellene (${sortedModels.join(', ')}) svarte. Siste feil: ${lastError}` 
+      }, { status: 500 });
     }
 
     let textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
