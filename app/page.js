@@ -100,20 +100,54 @@ const INITIAL_SKIS = [
   }
 ];
 
-function RacingSkiLogo({ size = 42 }) {
+function RacingSkiLogo({ size = 46 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
-      <circle cx="50" cy="50" r="48" fill="#0f172a" stroke="#0284c7" strokeWidth="2.5" />
-      <path d="M15 72 L65 18" stroke="#38bdf8" strokeWidth="3" strokeLinecap="round" strokeDasharray="4 6" opacity="0.6" />
-      <path d="M22 84 L76 22 Q83 14 91 16" stroke="#ff5500" strokeWidth="6" strokeLinecap="round" />
-      <path d="M30 88 L84 26 Q91 18 97 20" stroke="#0ea5e9" strokeWidth="4.5" strokeLinecap="round" />
-      <rect x="52" y="46" width="14" height="4.5" rx="2" transform="rotate(-47 52 46)" fill="#ffffff" />
-      <rect x="60" y="52" width="14" height="4" rx="2" transform="rotate(-47 60 52)" fill="#ffffff" />
+    <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="skiGrad1" x1="18" y1="84" x2="88" y2="16" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#0f172a" />
+          <stop offset="60%" stopColor="#1e293b" />
+          <stop offset="100%" stopColor="#ff5500" />
+        </linearGradient>
+        <linearGradient id="skiGrad2" x1="28" y1="88" x2="94" y2="20" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#0284c7" />
+          <stop offset="100%" stopColor="#38bdf8" />
+        </linearGradient>
+      </defs>
+
+      <rect x="4" y="4" width="92" height="92" rx="22" fill="#0f172a" />
+      <rect x="4" y="4" width="92" height="92" rx="22" stroke="#334155" strokeWidth="2" />
+
+      <line x1="18" y1="74" x2="74" y2="18" stroke="#1e293b" strokeWidth="1.5" strokeDasharray="3 3" />
+      <line x1="26" y1="82" x2="82" y2="26" stroke="#1e293b" strokeWidth="1.5" strokeDasharray="3 3" />
+
+      <path d="M18 64 Q50 38 82 46" stroke="#0284c7" strokeWidth="2" strokeLinecap="round" strokeDasharray="2 4" opacity="0.7" />
+      <path d="M16 86 L74 24 Q82 15 90 18" stroke="url(#skiGrad1)" strokeWidth="6.5" strokeLinecap="round" />
+      <path d="M26 90 L82 28 Q88 21 95 24" stroke="url(#skiGrad2)" strokeWidth="4.5" strokeLinecap="round" />
+
+      <line x1="44" y1="56" x2="55" y2="44" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" />
+      <line x1="52" y1="62" x2="63" y2="50" stroke="#f8fafc" strokeWidth="2.5" strokeLinecap="round" opacity="0.9" />
     </svg>
   );
 }
 
-// Smøre- og glideranbefaling basert på vær og temperatur
+function getPossessiveTitle(member, user) {
+  if (!member) return "Din skipark";
+  if (member.name === "Meg") return "Din skipark";
+
+  const firstName = user?.user_metadata?.full_name?.split(" ")[0];
+  if (firstName && member.name.toLowerCase() === firstName.toLowerCase()) {
+    return "Din skipark";
+  }
+
+  const name = member.name.trim();
+  const lastChar = name.slice(-1).toLowerCase();
+  if (lastChar === 's' || lastChar === 'z' || lastChar === 'x') {
+    return `${name}’ skipark`;
+  }
+  return `${name}s skipark`;
+}
+
 function getWaxAdvice(temp, humidity, skiType) {
   if (temp === null || temp === undefined) {
     return { kick: "Venter på temperatur fra Yr...", glide: "Standard allround-glider (f.eks. Swix PS7)" };
@@ -132,31 +166,26 @@ function getWaxAdvice(temp, humidity, skiType) {
     if (temp <= -10) {
       return {
         kick: "Ingen (Skøyteski)",
-        glide: "Swix PS5 (Turkis) / Rode R10 Kald. Rill: Finkornet 0.3mm eller rett slip.",
-        notes: "Tørr, aggressiv snø. Unngå myke glidere som samler friksjon."
+        glide: "Swix PS5 (Turkis) / Rode R10 Kald. Rill: Finkornet 0.3mm eller rett slip."
       };
     } else if (temp <= -4) {
       return {
         kick: "Ingen (Skøyteski)",
-        glide: "Swix PS6 / Marathon (Sort/Hvit) / Rode R20 Blå. Rill: 0.5mm rett eller fiskebein bak.",
-        notes: "Klassisk trikkeføre. Topp glid med middels hard voks."
+        glide: "Swix PS6 / Marathon / Rode R20 Blå. Rill: 0.5mm rett eller fiskebein bak."
       };
     } else if (temp <= 0) {
       return {
         kick: "Ingen (Skøyteski)",
-        glide: "Swix PS7 / PS8 / Vauhti Pure Race Rød. Rill: 0.75mm til 1mm rett + kryssrill bak.",
-        notes: "Høyere luftfuktighet krever mer åpen struktur og rill for å drenere vannhinne."
+        glide: "Swix PS7 / PS8 / Vauhti Pure Race Rød. Rill: 0.75mm til 1mm rett."
       };
     } else {
       return {
         kick: "Ingen (Skøyteski)",
-        glide: "Swix PS10 (Gul) / Rode R40 Våt / Vauhti Wet. Rill: 1.0mm eller 2.0mm grov rill.",
-        notes: "Svært våt snø. Mye struktur er avgjørende for å unngå vakuumsug."
+        glide: "Swix PS10 (Gul) / Rode R40 Våt / Vauhti Wet. Rill: 1.0mm eller 2.0mm grov rill."
       };
     }
   }
 
-  // Klassisk (Smøreski)
   if (temp < -12) {
     return {
       kick: "Swix VG30 / Rode Grønn (eller Rode T-Line VO). Tynt lag, korkes godt.",
@@ -169,20 +198,20 @@ function getWaxAdvice(temp, humidity, skiType) {
     };
   } else if (temp <= -2) {
     return {
-      kick: "Swix VP45 / VP40 eller Rode B17 / Violett Multigrade. En drøm på trikkeskinner.",
+      kick: "Swix VP45 / VP40 eller Rode B17 / Violett Multigrade.",
       glide: "Swix Marathon / Rode R20. Rill: 0.5mm til 0.75mm."
     };
   } else if (temp <= 0.5) {
     return {
       kick: humidity > 85 
-        ? "Swix VP65 / Rode Rode Rossa / Klisterdekke (Chola grunnklister + Swix Universal) hvis grov snø."
-        : "Swix VP55 eller Rode Weiss. Vær nøye med å ikke legge for tykt ved spenntupp!",
+        ? "Swix VP65 / Rode Rossa / Klisterdekke (Chola + Swix Universal) hvis grov snø."
+        : "Swix VP55 eller Rode Weiss.",
       glide: "Swix PS8 / Rode R30. Rill: 1.0mm."
     };
   } else {
     return {
-      kick: "Klisterføre: Rode Multigrade Klister eller Swix KX40S (Sølvklister) dekket med KX65 ved våt kornsnø.",
-      glide: "Swix PS10 / Rode R40. Rill: 1.0mm + 2.0mm kryssrill bak styresporet."
+      kick: "Klisterføre: Rode Multigrade Klister eller Swix KX40S (Sølvklister) dekket med KX65.",
+      glide: "Swix PS10 / Rode R40. Rill: 1.0mm + 2.0mm kryssrill bak."
     };
   }
 }
@@ -190,6 +219,13 @@ function getWaxAdvice(temp, humidity, skiType) {
 export default function Home() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // E-post auth state
+  const [authMode, setAuthMode] = useState("signin"); // 'signin' eller 'signup'
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authMessage, setAuthMessage] = useState({ text: "", type: "" });
+  const [authLoading, setAuthLoading] = useState(false);
 
   // Familiemedlemmer
   const [members, setMembers] = useState(INITIAL_MEMBERS);
@@ -209,7 +245,7 @@ export default function Home() {
   const [weatherData, setWeatherData] = useState(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
 
-  // PWA install-prompt holder
+  // PWA install-prompt
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
 
@@ -220,7 +256,6 @@ export default function Home() {
 
   const currentMember = members.find(m => m.id === activeMemberId) || members[0] || { name: "Meg", weightKg: 76 };
 
-  // Lytt etter PWA-event
   useEffect(() => {
     const handleBeforeInstall = (e) => {
       e.preventDefault();
@@ -259,6 +294,20 @@ export default function Home() {
     async function initUser() {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
+
+      if (user?.user_metadata?.full_name) {
+        const firstName = user.user_metadata.full_name.split(" ")[0];
+        setMembers(prev => {
+          const hasCustomName = prev.some(m => m.id === "m-1" && m.name !== "Meg");
+          if (!hasCustomName) {
+            const updated = prev.map(m => m.id === "m-1" ? { ...m, name: firstName } : m);
+            localStorage.setItem("skipark_family_members", JSON.stringify(updated));
+            return updated;
+          }
+          return prev;
+        });
+      }
+
       setLoading(false);
     }
     initUser();
@@ -308,7 +357,6 @@ export default function Home() {
     localStorage.setItem("skipark_custom_spots", JSON.stringify(updatedSpots));
   };
 
-  // Fjern all demo-data med ett klikk
   const handleClearDemoData = () => {
     if (window.confirm("Vil du fjerne alle demopar fra listen og kun beholde dine egne ski?")) {
       const realOnly = skis.filter(s => !s.isDemo);
@@ -359,12 +407,66 @@ export default function Home() {
     persistMembers(updated);
   };
 
+  // Google OAuth
   const handleGoogleLogin = async () => {
     if (!supabase) return;
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin }
     });
+  };
+
+  // Strava OAuth
+  const handleStravaLogin = async () => {
+    if (!supabase) return;
+    // Hvis Strava OAuth er satt opp under custom provider eller generic oauth
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'strava',
+      options: {
+        redirectTo: window.location.origin,
+        scopes: 'read,activity:read_all'
+      }
+    });
+
+    if (error) {
+      alert("Strava OAuth krever at Strava-appen din er aktivert i Supabase Auth Providers. Bruk Google eller e-post inntil Strava API-nøkler er lagt inn.");
+    }
+  };
+
+  // E-post og passord håndtering
+  const handleEmailAuth = async (e) => {
+    e.preventDefault();
+    if (!supabase) return;
+
+    setAuthLoading(true);
+    setAuthMessage({ text: "", type: "" });
+
+    try {
+      if (authMode === "signin") {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: window.location.origin }
+        });
+        if (error) throw error;
+        setAuthMessage({
+          text: "Konto opprettet! Sjekk e-posten din for bekreftelseslenke.",
+          type: "success"
+        });
+      }
+    } catch (err) {
+      setAuthMessage({
+        text: err.message === "Invalid login credentials"
+          ? "Feil e-post eller passord."
+          : err.message,
+        type: "error"
+      });
+    } finally {
+      setAuthLoading(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -424,32 +526,130 @@ export default function Home() {
     );
   }
 
-  // Ikke innlogget – Fresh lys velkomstskjerm
+  // Velkomstskjerm med Google, Strava og E-post/passord
   if (!user) {
     return (
       <div style={{ minHeight: '100vh', background: 'linear-gradient(180deg, #f0f7ff 0%, #ffffff 100%)', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', fontFamily: 'system-ui, sans-serif' }}>
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: '44px 32px', borderRadius: '24px', maxWidth: '440px', width: '100%', textAlign: 'center', boxShadow: '0 20px 40px -15px rgba(2, 132, 199, 0.12)' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
-            <RacingSkiLogo size={76} />
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: '40px 32px', borderRadius: '24px', maxWidth: '440px', width: '100%', textAlign: 'center', boxShadow: '0 20px 40px -15px rgba(2, 132, 199, 0.12)' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '18px' }}>
+            <RacingSkiLogo size={78} />
           </div>
-          <h1 style={{ fontSize: '28px', fontWeight: '800', margin: '0 0 10px 0', letterSpacing: '-0.02em', color: '#0f172a' }}>
+          <h1 style={{ fontSize: '28px', fontWeight: '800', margin: '0 0 8px 0', letterSpacing: '-0.02em', color: '#0f172a' }}>
             SkiPark <span style={{ color: '#0284c7' }}>Pro</span>
           </h1>
-          <p style={{ fontSize: '15px', color: '#475569', marginBottom: '32px', lineHeight: '1.6' }}>
+          <p style={{ fontSize: '14px', color: '#475569', marginBottom: '28px', lineHeight: '1.5' }}>
             Profesjonell skipark-administrasjon, live Yr-førevelger, smøretips og Skiselector-spennkurver.
           </p>
-          <button
-            onClick={handleGoogleLogin}
-            style={{ width: '100%', minHeight: '52px', background: '#0f172a', color: '#ffffff', fontWeight: '700', border: 'none', padding: '14px 20px', borderRadius: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '14px', fontSize: '16px', boxShadow: '0 10px 20px -5px rgba(15, 23, 42, 0.25)' }}
-          >
-            <svg style={{ width: '20px', height: '20px' }} viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-            </svg>
-            Fortsett med Google
-          </button>
+
+          {/* SOSIALE LOGG INN KNAPPER */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
+            <button
+              onClick={handleGoogleLogin}
+              style={{ width: '100%', minHeight: '50px', background: '#0f172a', color: '#ffffff', fontWeight: '700', border: 'none', padding: '12px 20px', borderRadius: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', fontSize: '15px', boxShadow: '0 8px 16px -4px rgba(15, 23, 42, 0.2)' }}
+            >
+              <svg style={{ width: '19px', height: '19px' }} viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+              </svg>
+              Fortsett med Google
+            </button>
+
+            {/* STRAVA KNAPP */}
+            <button
+              onClick={handleStravaLogin}
+              style={{ width: '100%', minHeight: '50px', background: '#fc4c02', color: '#ffffff', fontWeight: '700', border: 'none', padding: '12px 20px', borderRadius: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', fontSize: '15px', boxShadow: '0 8px 16px -4px rgba(252, 76, 2, 0.3)' }}
+            >
+              <svg style={{ width: '18px', height: '18px' }} viewBox="0 0 24 24" fill="#ffffff">
+                <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7.925 15.688h4.173" />
+              </svg>
+              Fortsett med Strava
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', margin: '20px 0', color: '#94a3b8', fontSize: '12px', fontWeight: '700' }}>
+            <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
+            <span style={{ padding: '0 10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>eller med e-post</span>
+            <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
+          </div>
+
+          {/* E-POST INNLOGGINGSSKJEMA */}
+          <form onSubmit={handleEmailAuth} style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '4px' }}>E-postadresse</label>
+              <input
+                type="email"
+                required
+                placeholder="deg@eksempel.no"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                style={{ width: '100%', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#0f172a', padding: '12px 14px', borderRadius: '12px', fontSize: '14px', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '4px' }}>Passord</label>
+              <input
+                type="password"
+                required
+                placeholder="Minst 6 tegn"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={{ width: '100%', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#0f172a', padding: '12px 14px', borderRadius: '12px', fontSize: '14px', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            {authMessage.text && (
+              <div style={{
+                background: authMessage.type === 'error' ? '#fef2f2' : '#f0fdf4',
+                color: authMessage.type === 'error' ? '#dc2626' : '#166534',
+                border: '1px solid ' + (authMessage.type === 'error' ? '#fecaca' : '#bbf7d0'),
+                padding: '10px 14px',
+                borderRadius: '10px',
+                fontSize: '13px',
+                fontWeight: '600',
+                textAlign: 'center'
+              }}>
+                {authMessage.text}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={authLoading}
+              style={{ width: '100%', background: '#0284c7', color: '#ffffff', fontWeight: '700', border: 'none', padding: '13px', borderRadius: '12px', fontSize: '15px', cursor: 'pointer', marginTop: '6px', opacity: authLoading ? 0.7 : 1 }}
+            >
+              {authLoading ? "Behandler..." : (authMode === "signin" ? "Logg inn med e-post" : "Opprett ny konto")}
+            </button>
+          </form>
+
+          {/* VEKSLING MELLOM LOGG INN OG REGISTRER */}
+          <div style={{ marginTop: '18px', fontSize: '13px', color: '#64748b' }}>
+            {authMode === "signin" ? (
+              <span>
+                Har du ikke konto ennå?{' '}
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode("signup"); setAuthMessage({ text: "", type: "" }); }}
+                  style={{ background: 'none', border: 'none', color: '#0284c7', fontWeight: '700', cursor: 'pointer', padding: 0 }}
+                >
+                  Registrer deg her
+                </button>
+              </span>
+            ) : (
+              <span>
+                Har du allerede en konto?{' '}
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode("signin"); setAuthMessage({ text: "", type: "" }); }}
+                  style={{ background: 'none', border: 'none', color: '#0284c7', fontWeight: '700', cursor: 'pointer', padding: 0 }}
+                >
+                  Logg inn her
+                </button>
+              </span>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -485,11 +685,13 @@ export default function Home() {
   const bestSki = rankedSkis[0];
   const waxAdvice = getWaxAdvice(weatherData?.temp, weatherData?.humidity, bestSki?.type || "Klassisk");
 
+  const parkTabLabel = `🎿 ${getPossessiveTitle(currentMember, user)} (${memberSkis.length})`;
+
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', color: '#0f172a', padding: '24px 20px', fontFamily: 'system-ui, -apple-system, sans-serif', boxSizing: 'border-box' }}>
       <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
 
-        {/* TOPPLINJE MED LOGO, INSTALL-KNAPP OG LØPERVELGER */}
+        {/* TOPPLINJE */}
         <header style={{ background: '#ffffff', borderRadius: '20px', padding: '16px 24px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <RacingSkiLogo size={46} />
@@ -502,7 +704,6 @@ export default function Home() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            {/* INSTALLER PÅ HJEMSKJERM KNAPP */}
             {!isInstalled && (
               <button
                 onClick={handleInstallClick}
@@ -553,7 +754,7 @@ export default function Home() {
           </div>
         </header>
 
-        {/* DEMO-DATA ADVARSEL / INFORMASJONSBANNER */}
+        {/* DEMO-DATA ADVARSEL */}
         {hasDemoSkis && (
           <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '14px', padding: '12px 18px', marginTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -575,7 +776,7 @@ export default function Home() {
         {showAddMember && (
           <div style={{ background: '#eff6ff', border: '1px solid #93c5fd', borderRadius: '16px', padding: '20px', marginTop: '14px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
             <span style={{ fontWeight: '700', fontSize: '15px', color: '#1e3a8a' }}>Legg til ny utøver:</span>
-            <input id="newMemName" placeholder="Navn (f.eks. Anna)" style={{ background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a', padding: '8px 14px', borderRadius: '10px', fontSize: '14px', minHeight: '40px' }} />
+            <input id="newMemName" placeholder="Fornavn (f.eks. Anna)" style={{ background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a', padding: '8px 14px', borderRadius: '10px', fontSize: '14px', minHeight: '40px' }} />
             <input id="newMemWeight" type="number" placeholder="Vekt i kg" style={{ width: '130px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a', padding: '8px 14px', borderRadius: '10px', fontSize: '14px', minHeight: '40px' }} />
             <button
               onClick={() => {
@@ -617,7 +818,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* YR VÆR-BANNER MED UTVIDET STEDSVELGER */}
+        {/* YR VÆR-BANNER */}
         <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '18px 24px', marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <div style={{ background: '#f0f9ff', padding: '12px', borderRadius: '14px', fontSize: '28px', border: '1px solid #bae6fd' }}>
@@ -684,7 +885,7 @@ export default function Home() {
           </button>
         </div>
 
-        {/* SMØRE- OG GLIDERANBEFALING PANEL (Vises i Recommender-modus) */}
+        {/* SMØRE- OG GLIDERANBEFALING */}
         {view === "recommender" && weatherData && (
           <div style={{ background: '#ffffff', border: '2px solid #0284c7', borderRadius: '18px', padding: '22px', marginTop: '16px', boxShadow: '0 8px 24px rgba(2, 132, 199, 0.08)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
@@ -716,10 +917,10 @@ export default function Home() {
           </div>
         )}
 
-        {/* STORE, TYDELIGE FANER */}
+        {/* FANER */}
         <nav style={{ display: 'flex', gap: '10px', margin: '20px 0', flexWrap: 'wrap' }}>
           {[
-            { id: "park", label: `🎿 ${currentMember.name}s Skipark (${memberSkis.length})` },
+            { id: "park", label: parkTabLabel },
             { id: "recommender", label: "⚡ Dagens Skivelger" },
             { id: "manual", label: "➕ Legg til ski" },
             { id: "camera", label: "📸 Skiselector Bilde" },
@@ -775,14 +976,14 @@ export default function Home() {
 
               {view === "recommender" && (
                 <div style={{ fontSize: '14px', color: '#0284c7', fontWeight: '700' }}>
-                  Rangert etter best match for {currentMember.name} ({currentMember.weightKg} kg) på {weatherData ? `${weatherData.temp}°C` : 'dagens føre'}
+                  Optimalt for {currentMember.name === 'Meg' ? 'deg' : currentMember.name} ({currentMember.weightKg} kg) på {weatherData ? `${weatherData.temp}°C` : 'dagens føre'}
                 </div>
               )}
             </div>
 
             {filteredSkis.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '50px 20px', color: '#64748b', background: '#ffffff', borderRadius: '18px', border: '1px solid #e2e8f0', fontSize: '16px' }}>
-                Ingen ski registrert for {currentMember.name} ennå. Trykk <strong>➕ Legg til ski</strong> for å opprette ditt første par.
+                Ingen ski registrert her ennå. Trykk <strong>➕ Legg til ski</strong> for å opprette et par.
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: '18px' }}>
@@ -923,7 +1124,9 @@ export default function Home() {
 
             {/* Spennkurve SVG */}
             <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
-              <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '800' }}>Spennkurve for {currentMember.name} ({currentMember.weightKg} kg)</h3>
+              <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '800' }}>
+                Spennkurve ({currentMember.weightKg} kg)
+              </h3>
               <p style={{ fontSize: '14px', color: '#64748b', margin: '0 0 20px 0' }}>Beregnet kurveprofil ved halvvekt (HBW) og fullvekt (FBW).</p>
 
               <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
@@ -1184,7 +1387,7 @@ export default function Home() {
                       type="submit"
                       style={{ background: '#059669', color: '#ffffff', border: 'none', padding: '14px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer', fontSize: '15px' }}
                     >
-                      Legg til i {currentMember.name}s skipark
+                      Legg til i {getPossessiveTitle(currentMember, user)}
                     </button>
                   </form>
                 )}
