@@ -45,12 +45,16 @@ Returner KUN ren JSON uten markdown-formattering, ingen backticks, kun dette JSO
 }
 `;
 
-    // Kall Gemini 2.5 Flash med bilde
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    // Bruk ren URL og send nøkkelen i x-goog-api-key og Authorization headers for å støtte både AQ. og AIzaSy
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey.trim(),
+        'Authorization': `Bearer ${apiKey.trim()}`
+      },
       body: JSON.stringify({
         contents: [
           {
@@ -76,7 +80,6 @@ Returner KUN ren JSON uten markdown-formattering, ingen backticks, kun dette JSO
     const result = await response.json();
     let textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
 
-    // Rens vekk eventuelle ```json wrappers fra svaret
     textResponse = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
 
     const parsedData = JSON.parse(textResponse);
