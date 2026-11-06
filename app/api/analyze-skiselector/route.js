@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export async function POST(req) {
   try {
     const rawKey = process.env.GEMINI_API_KEY;
@@ -31,7 +33,7 @@ Analyser bildet og trekk ut følgende data med høy presisjon:
 - weightMin: Anbefalt min løpervekt i kg som tall.
 - weightMax: Anbefalt maks løpervekt i kg som tall.
 
-Returner KUN ren JSON uten markdown-formatering, ingen backticks, kun dette JSON-objektet:
+Returner KUN gyldig JSON uten markdown-formatering eller backticks:
 {
   "brand": "string",
   "model": "string",
@@ -46,60 +48,69 @@ Returner KUN ren JSON uten markdown-formatering, ingen backticks, kun dette JSON
 }
 `;
 
-    // Prøv primærmodell først, og fall tilbake på alternative modeller ved 503 eller overbelastning
-    const candidateModels = [
+    // Aktive, gyldige modeller i API-et
+    const modelsToTry = [
       'gemini-2.5-flash',
-      'gemini-1.5-flash',
-      'gemini-2.0-flash'
+      'gemini-1.5-flash'
     ];
 
     let lastError = null;
     let result = null;
 
-    for (const model of candidateModels) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: prompt },
-                {
-                  inlineData: {
-                    mimeType: mimeType || 'image/jpeg',
-                    data: imageBase64
+    for (const model of modelsToTry) {
+      // Prøv inntil 2 ganger per modell hvis Google svarer 503 (midlertidig overbelastning)
+      for (let attempt = 0; attempt < 2; attempt++) {
+        if (attempt > 0) {
+          await sleep(1500); // Vent 1,5 sekunder før retry
+        }
+
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: prompt },
+                  {
+                    inlineData: {
+                      mimeType: mimeType || 'image/jpeg',
+                      data: imageBase64
+                    }
                   }
-                }
-              ]
+                ]
+              }
+            ],
+            generationConfig: {
+              temperature: 0.1
             }
-          ]
-        })
-      });
+          })
+        });
 
-      if (response.ok) {
-        result = await response.json();
-        break;
+        if (response.ok) {
+          result = await response.json();
+          break;
+        }
+
+        const errText = await response.text();
+        lastError = `Modell ${model} feilet (${response.status}): ${errText}`;
+
+        // Hvis det ikke er overbelastning (503) eller rate limit (429), gå videre
+        if (response.status !== 503 && response.status !== 429) {
+          break;
+        }
       }
 
-      const errText = await response.text();
-      lastError = `Modell ${model} feilet (${response.status}): ${errText}`;
-
-      // Hvis feilen er 503 (high demand) eller 429 (rate limit), fortsett til neste modell i listen
-      if (response.status === 503 || response.status === 429 || response.status === 404) {
-        continue;
-      } else {
-        return NextResponse.json({ error: lastError }, { status: response.status });
-      }
+      if (result) break;
     }
 
     if (!result) {
-      return NextResponse.json({ error: `Alle modeller opptatt. Siste feil: ${lastError}` }, { status: 503 });
+      return NextResponse.json({ error: `Kunne ikke fullføre bildeanalysen. ${lastError}` }, { status: 503 });
     }
 
     let textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
