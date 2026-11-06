@@ -32,6 +32,7 @@ const INITIAL_SKIS = [
     id: "ski-1",
     isDemo: true,
     memberId: "m-1",
+    tag: "#speedmax",
     brand: "Fischer",
     model: "Speedmax 3D Skate Plus",
     type: "Skate",
@@ -45,7 +46,7 @@ const INITIAL_SKIS = [
     grind: "P5-1 Allround Minus",
     hbw: null,
     fbw: null,
-    stravaKm: 142,
+    stravaKm: 142.5,
     notes: "Nydelig glid på -2 til -7 med faste spor. Eksempel på birkenski.",
     maintenanceLog: [
       { date: "2025-01-15", title: "Mettet med Swix Marathon", type: "Glid" }
@@ -55,6 +56,7 @@ const INITIAL_SKIS = [
     id: "ski-2",
     isDemo: true,
     memberId: "m-1",
+    tag: "#redline",
     brand: "Madshus",
     model: "Redline 3.0 Classic Cold",
     type: "Klassisk",
@@ -70,7 +72,7 @@ const INITIAL_SKIS = [
     fbw: 0.22,
     pocketFrontCm: 38,
     pocketRearCm: 16,
-    stravaKm: 89,
+    stravaKm: 88.0,
     notes: "Eksempel på tørrvoksski. Null subb i staking og lett å tråkke ned.",
     maintenanceLog: [
       { date: "2025-02-02", title: "Rode B17 + Swix VP45", type: "Feste" }
@@ -80,6 +82,7 @@ const INITIAL_SKIS = [
     id: "ski-3",
     isDemo: true,
     memberId: "m-2",
+    tag: "#juniorfelle",
     brand: "Rossignol",
     model: "Delta Sport R-Skin Junior",
     type: "Felleski",
@@ -95,7 +98,7 @@ const INITIAL_SKIS = [
     fbw: 0.20,
     pocketFrontCm: 28,
     pocketRearCm: 10,
-    stravaKm: 34,
+    stravaKm: 34.2,
     notes: "Eksempel på felleski for Junior. Lett å tråkke ned for sikkert feste.",
     maintenanceLog: [
       { date: "2025-01-10", title: "Renset og impregnert fell", type: "Fell" }
@@ -230,10 +233,10 @@ export default function Home() {
   const [authMessage, setAuthMessage] = useState({ text: "", type: "" });
   const [authLoading, setAuthLoading] = useState(false);
 
-  // Strava state
+  // Strava state (Metode 1)
   const [stravaConnected, setStravaConnected] = useState(false);
-  const [stravaAthlete, setStravaAthlete] = useState(null);
   const [showStravaModal, setShowStravaModal] = useState(false);
+  const [unassignedActivities, setUnassignedActivities] = useState([]);
 
   // Familiemedlemmer
   const [members, setMembers] = useState(INITIAL_MEMBERS);
@@ -302,7 +305,6 @@ export default function Home() {
     const savedStrava = localStorage.getItem("skipark_strava_connected");
     if (savedStrava === "true") {
       setStravaConnected(true);
-      setStravaAthlete({ name: "Aktiv Løper", totalKm: 265 });
     }
 
     if (!supabase) {
@@ -502,6 +504,12 @@ export default function Home() {
     persistSkis(updated);
   };
 
+  const handleUpdateTag = (id, newTag) => {
+    const cleanTag = newTag.trim().startsWith("#") ? newTag.trim().toLowerCase() : `#${newTag.trim().toLowerCase()}`;
+    const updated = skis.map(s => s.id === id ? { ...s, tag: cleanTag } : s);
+    persistSkis(updated);
+  };
+
   const handleAddLog = (id, entry) => {
     const updated = skis.map(s => s.id === id ? {
       ...s,
@@ -518,7 +526,57 @@ export default function Home() {
     setTimeout(() => setIsAnalyzing(false), 1200);
   };
 
-  // Håndter QR-kode bilde eller manuell URL
+  // METODE 1: STRAVA SYNK & HASHTAG-MATCHING
+  const handleSyncStravaActivities = () => {
+    // Simulerte Strava-skiaktiviteter (NordicSki)
+    const incomingActivities = [
+      { id: "act-1", title: "Kveldstur Sjusjøen #speedmax", distanceKm: 24.5, date: "I dag" },
+      { id: "act-2", title: "Klassisk i Nordmarka #redline", distanceKm: 18.0, date: "I går" },
+      { id: "act-3", title: "Rundløype Beitostølen", distanceKm: 14.2, date: "3 dager siden" } // Uten tag
+    ];
+
+    let matchedCount = 0;
+    let tempSkis = [...skis];
+    const unassigned = [];
+
+    incomingActivities.forEach(act => {
+      const lowerTitle = act.title.toLowerCase();
+      const matchedSki = tempSkis.find(s => s.tag && lowerTitle.includes(s.tag.toLowerCase()));
+
+      if (matchedSki) {
+        tempSkis = tempSkis.map(s => s.id === matchedSki.id ? {
+          ...s,
+          stravaKm: Math.round(((s.stravaKm || 0) + act.distanceKm) * 10) / 10,
+          maintenanceLog: [
+            { date: new Date().toISOString().split("T")[0], title: `Strava: ${act.title} (+${act.distanceKm} km)`, type: "Økt" },
+            ...(s.maintenanceLog || [])
+          ]
+        } : s);
+        matchedCount++;
+      } else {
+        unassigned.push(act);
+      }
+    });
+
+    persistSkis(tempSkis);
+    setUnassignedActivities(unassigned);
+    alert(`✓ Strava synkronisert!\n${matchedCount} økter matchet automatisk via hashtag (#).\n${unassigned.length} økt manglet hashtag og kan tildeles manuelt under.`);
+  };
+
+  const handleAssignActivity = (act, targetSkiId) => {
+    const updated = skis.map(s => s.id === targetSkiId ? {
+      ...s,
+      stravaKm: Math.round(((s.stravaKm || 0) + act.distanceKm) * 10) / 10,
+      maintenanceLog: [
+        { date: new Date().toISOString().split("T")[0], title: `Strava: ${act.title} (+${act.distanceKm} km)`, type: "Økt" },
+        ...(s.maintenanceLog || [])
+      ]
+    } : s);
+    persistSkis(updated);
+    setUnassignedActivities(unassignedActivities.filter(a => a.id !== act.id));
+  };
+
+  // QR-dekoding / innlesing
   const processQrPayload = (payload) => {
     setQrScanning(true);
     setTimeout(() => {
@@ -527,6 +585,7 @@ export default function Home() {
         id: "ski-" + Date.now(),
         isDemo: false,
         memberId: activeMemberId,
+        tag: "#nyski",
         brand: "Madshus",
         model: "Redline Classic (QR Skiplukkern)",
         type: "Klassisk",
@@ -548,7 +607,7 @@ export default function Home() {
           { date: new Date().toISOString().split("T")[0], title: "Importert fra butikkmåling", type: "Måling" }
         ]
       });
-      alert(`✓ Måledata fra QR-koden ble lest inn for ${currentMember.name}!`);
+      alert(`✓ Måledata fra QR-koden ble lagt til for ${currentMember.name}!`);
     }, 900);
   };
 
@@ -575,7 +634,6 @@ export default function Home() {
             Profesjonell skipark-administrasjon, live Yr-førevelger, smøretips og Skiselector-spennkurver.
           </p>
 
-          {/* GOOGLE INNLOGGING */}
           <button
             onClick={handleGoogleLogin}
             style={{ width: '100%', minHeight: '50px', background: '#0f172a', color: '#ffffff', fontWeight: '700', border: 'none', padding: '12px 20px', borderRadius: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', fontSize: '15px', boxShadow: '0 8px 16px -4px rgba(15, 23, 42, 0.2)', marginBottom: '20px' }}
@@ -595,7 +653,6 @@ export default function Home() {
             <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
           </div>
 
-          {/* E-POST INNLOGGINGSSKJEMA */}
           <form onSubmit={handleEmailAuth} style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
             <div>
               <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '4px' }}>E-postadresse</label>
@@ -703,14 +760,13 @@ export default function Home() {
 
   const bestSki = rankedSkis[0];
   const waxAdvice = getWaxAdvice(weatherData?.temp, weatherData?.humidity, bestSki?.type || "Klassisk");
-
   const parkTabLabel = `🎿 ${getPossessiveTitle(currentMember, user)} (${memberSkis.length})`;
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', color: '#0f172a', padding: '24px 20px', fontFamily: 'system-ui, -apple-system, sans-serif', boxSizing: 'border-box' }}>
       <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
 
-        {/* TOPPLINJE MED STRAVA-STATUS */}
+        {/* TOPPLINJE MED STRAVA METODE 1 */}
         <header style={{ background: '#ffffff', borderRadius: '20px', padding: '16px 24px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <RacingSkiLogo size={46} />
@@ -723,7 +779,6 @@ export default function Home() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            {/* STRAVA API KRETS */}
             <button
               onClick={() => setShowStravaModal(true)}
               style={{
@@ -740,12 +795,12 @@ export default function Home() {
                 alignItems: 'center',
                 gap: '8px'
               }}
-              title="Koble til Strava for kilometerstand per ski"
+              title="Koble til Strava og synk kilometer via hashtags"
             >
               <svg style={{ width: '16px', height: '16px' }} viewBox="0 0 24 24" fill={stravaConnected ? '#fc4c02' : '#64748b'}>
                 <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7.925 15.688h4.173" />
               </svg>
-              <span>{stravaConnected ? "✓ Strava synket" : "Koble Strava"}</span>
+              <span>{stravaConnected ? "✓ Strava (#tag)" : "Koble Strava"}</span>
             </button>
 
             {!isInstalled && (
@@ -798,51 +853,99 @@ export default function Home() {
           </div>
         </header>
 
-        {/* STRAVA API KOBLE-MODAL */}
+        {/* STRAVA METODE 1 MODAL (HASHTAG-MATCHING) */}
         {showStravaModal && (
-          <div style={{ background: '#fff7ed', border: '2px solid #fc4c02', borderRadius: '16px', padding: '22px', marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ background: '#fff7ed', border: '2px solid #fc4c02', borderRadius: '18px', padding: '24px', marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '24px' }}>🚴</span>
-                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#9a3412' }}>
-                  Strava Utstyrs- og Kilometer-Synkronisering
+                <span style={{ fontSize: '26px' }}>⚡</span>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#9a3412' }}>
+                  Strava Automatisk Km-synkronisering (Metode 1)
                 </h3>
               </div>
-              <button onClick={() => setShowStravaModal(false)} style={{ background: 'none', border: 'none', fontSize: '16px', cursor: 'pointer', color: '#9a3412', fontWeight: 'bold' }}>✕</button>
+              <button onClick={() => setShowStravaModal(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#9a3412', fontWeight: 'bold' }}>✕</button>
             </div>
 
-            <p style={{ margin: 0, fontSize: '14px', color: '#7c2d12', lineHeight: '1.5' }}>
-              Koble SkiPark Pro mot Strava API for automatisk å loggføre antall kilometer på hvert skipar ved fullførte skiturer.
+            <p style={{ margin: 0, fontSize: '14px', color: '#7c2d12', lineHeight: '1.6' }}>
+              Siden Strava ikke har ski under «Gear», matcher SkiPark Pro skiene dine automatisk ved hjelp av en enkel <strong>#kode</strong> i tittel eller beskrivelse på økta (f.eks <em>"Morgentur #speedmax"</em> eller <em>"Klassisk Sjusjøen #redline"</em>).
             </p>
 
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginTop: '6px' }}>
+            <div style={{ background: '#ffffff', border: '1px solid #fed7aa', padding: '14px 18px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '800', color: '#9a3412' }}>Dine registrerte skikoder i appen:</div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
+                {skis.map(s => (
+                  <span key={s.id} style={{ background: '#ffedd5', color: '#c2410c', padding: '4px 10px', borderRadius: '8px', fontSize: '13px', fontWeight: '700' }}>
+                    {s.brand} {s.model}: <strong>{s.tag || '#mangler'}</strong>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginTop: '4px' }}>
               {!stravaConnected ? (
                 <button
                   onClick={() => {
                     localStorage.setItem("skipark_strava_connected", "true");
                     setStravaConnected(true);
-                    setStravaAthlete({ name: "Aktiv Skiløper", totalKm: 265 });
-                    setShowStravaModal(false);
-                    alert("✓ Koblet til Strava API! Skiturene dine synkroniseres nå mot skiparken.");
+                    alert("✓ Strava-kobling aktivert!");
                   }}
-                  style={{ background: '#fc4c02', color: '#ffffff', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: '800', cursor: 'pointer', fontSize: '14px' }}
+                  style={{ background: '#fc4c02', color: '#ffffff', border: 'none', padding: '12px 22px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer', fontSize: '14px' }}
                 >
-                  Autoriser SkiPark Pro hos Strava
+                  Aktiver Strava-kobling
                 </button>
               ) : (
+                <button
+                  onClick={handleSyncStravaActivities}
+                  style={{ background: '#059669', color: '#ffffff', border: 'none', padding: '12px 22px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer', fontSize: '14px' }}
+                >
+                  🔄 Synkroniser Strava-økter nå
+                </button>
+              )}
+
+              {stravaConnected && (
                 <button
                   onClick={() => {
                     localStorage.removeItem("skipark_strava_connected");
                     setStravaConnected(false);
-                    setStravaAthlete(null);
-                    setShowStravaModal(false);
                   }}
-                  style={{ background: '#ffffff', color: '#dc2626', border: '1px solid #fca5a5', padding: '10px 20px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}
+                  style={{ background: '#ffffff', color: '#dc2626', border: '1px solid #fca5a5', padding: '12px 18px', borderRadius: '12px', fontWeight: '700', cursor: 'pointer', fontSize: '13px' }}
                 >
-                  Koble fra Strava
+                  Koble fra
                 </button>
               )}
-              <span style={{ fontSize: '12px', color: '#9a3412' }}>Krever Strava Athlete read-tilgang.</span>
+            </div>
+          </div>
+        )}
+
+        {/* UFORDELTE STRAVA-ØKTER (HVIS HASHTAG MANGLER PÅ TUREN) */}
+        {unassignedActivities.length > 0 && (
+          <div style={{ background: '#ffffff', border: '2px solid #f59e0b', borderRadius: '16px', padding: '18px 22px', marginTop: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '20px' }}>⚠️</span>
+              <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#92400e' }}>
+                Ufordelte Strava-turer (mangler #kode)
+              </h4>
+            </div>
+            <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#78350f' }}>
+              Følgende skiøkter hadde ingen gjenkjennelig #kode. Hvilket par brukte du?
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {unassignedActivities.map(act => (
+                <div key={act.id} style={{ background: '#fffbeb', padding: '10px 14px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                  <span style={{ fontWeight: '700', fontSize: '14px' }}>{act.title} ({act.distanceKm} km, {act.date})</span>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {memberSkis.map(ski => (
+                      <button
+                        key={ski.id}
+                        onClick={() => handleAssignActivity(act, ski.id)}
+                        style={{ background: '#ffffff', border: '1px solid #d97706', color: '#b45309', padding: '5px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+                      >
+                        Bruk {ski.brand} ({ski.tag || ski.type})
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -1105,6 +1208,10 @@ export default function Home() {
                               {ski.type.toUpperCase()}
                             </span>
 
+                            <span style={{ fontSize: '11px', fontWeight: '800', padding: '2px 8px', borderRadius: '6px', background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa' }}>
+                              {ski.tag || '#mangler'}
+                            </span>
+
                             {ski.isDemo && (
                               <span style={{ fontSize: '10px', fontWeight: '800', padding: '2px 6px', borderRadius: '4px', background: '#fffbeb', color: '#b45309', border: '1px solid #fde68a' }}>
                                 DEMO
@@ -1141,9 +1248,7 @@ export default function Home() {
                             <div>Slip: <strong>{ski.grind}</strong></div>
                             <div>Vektområde: <strong>{ski.weightKgMin}-{ski.weightKgMax} kg</strong></div>
                             <div>Binding: <strong style={{ color: '#ea580c' }}>{ski.bindingShift || '0'}</strong></div>
-                            {ski.stravaKm !== undefined && (
-                              <div>Strava-distanse: <strong style={{ color: '#fc4c02' }}>{ski.stravaKm} km</strong></div>
-                            )}
+                            <div>Strava-distanse: <strong style={{ color: '#fc4c02' }}>{ski.stravaKm || 0} km</strong></div>
                           </div>
                         </div>
                       </div>
@@ -1184,35 +1289,54 @@ export default function Home() {
             <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
-                  <span style={{ fontSize: '12px', fontWeight: '700', background: '#eff6ff', color: '#1d4ed8', padding: '4px 10px', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
-                    {activeSki.type} • {activeSki.lengthCm} cm • Løper: {members.find(m => m.id === activeSki.memberId)?.name || 'Felles'}
-                  </span>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '12px', fontWeight: '700', background: '#eff6ff', color: '#1d4ed8', padding: '4px 10px', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
+                      {activeSki.type} • {activeSki.lengthCm} cm • Løper: {members.find(m => m.id === activeSki.memberId)?.name || 'Felles'}
+                    </span>
+                    <span style={{ fontSize: '12px', fontWeight: '800', background: '#fff7ed', color: '#c2410c', padding: '4px 10px', borderRadius: '6px', border: '1px solid #fed7aa' }}>
+                      Strava-kode: {activeSki.tag || '#mangler'}
+                    </span>
+                  </div>
                   <h2 style={{ fontSize: '26px', margin: '12px 0 4px 0', fontWeight: '800', color: '#0f172a' }}>{activeSki.brand} {activeSki.model}</h2>
                   <p style={{ color: '#64748b', fontSize: '15px', margin: 0, fontWeight: '500' }}>Profil: {activeSki.camberType} | Slip: {activeSki.grind}</p>
                 </div>
 
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '12px 16px', borderRadius: '14px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', marginBottom: '8px', letterSpacing: '0.05em' }}>BINDING (MOVE / SHIFT)</div>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    {["-2", "-1", "0", "+1", "+2"].map(shift => (
-                      <button
-                        key={shift}
-                        onClick={() => handleUpdateBinding(activeSki.id, shift)}
-                        style={{
-                          background: (activeSki.bindingShift || "0") === shift ? '#ff5500' : '#ffffff',
-                          color: (activeSki.bindingShift || "0") === shift ? '#ffffff' : '#334155',
-                          fontWeight: '800',
-                          border: '1.5px solid ' + ((activeSki.bindingShift || "0") === shift ? '#ff5500' : '#cbd5e1'),
-                          borderRadius: '8px',
-                          padding: '8px 14px',
-                          fontSize: '14px',
-                          cursor: 'pointer',
-                          minWidth: '40px'
-                        }}
-                      >
-                        {shift}
-                      </button>
-                    ))}
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  {/* Endre hashtag for paret */}
+                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '10px 14px', borderRadius: '14px', textAlign: 'left' }}>
+                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', marginBottom: '4px' }}>STRAVA HASHTAG (#)</div>
+                    <input
+                      type="text"
+                      defaultValue={activeSki.tag || ""}
+                      placeholder="#kode"
+                      onBlur={(e) => handleUpdateTag(activeSki.id, e.target.value)}
+                      style={{ background: '#ffffff', border: '1px solid #cbd5e1', padding: '4px 8px', borderRadius: '6px', fontSize: '13px', fontWeight: '700', color: '#c2410c', width: '100px' }}
+                    />
+                  </div>
+
+                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '10px 14px', borderRadius: '14px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', marginBottom: '6px', letterSpacing: '0.05em' }}>BINDING (MOVE / SHIFT)</div>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {["-2", "-1", "0", "+1", "+2"].map(shift => (
+                        <button
+                          key={shift}
+                          onClick={() => handleUpdateBinding(activeSki.id, shift)}
+                          style={{
+                            background: (activeSki.bindingShift || "0") === shift ? '#ff5500' : '#ffffff',
+                            color: (activeSki.bindingShift || "0") === shift ? '#ffffff' : '#334155',
+                            fontWeight: '800',
+                            border: '1.5px solid ' + ((activeSki.bindingShift || "0") === shift ? '#ff5500' : '#cbd5e1'),
+                            borderRadius: '8px',
+                            padding: '6px 12px',
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                            minWidth: '36px'
+                          }}
+                        >
+                          {shift}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1238,6 +1362,7 @@ export default function Home() {
                   <div>HBW (Halvvekt): <strong style={{ color: '#0284c7' }}>{activeSki.hbw || 1.15} mm</strong></div>
                   <div>FBW (Fullvekt): <strong style={{ color: '#ff5500' }}>{activeSki.fbw || 0.22} mm</strong></div>
                   <div>Smørelomme: <strong style={{ color: '#059669' }}>+{activeSki.pocketFrontCm || 38}cm / -{activeSki.pocketRearCm || 16}cm</strong></div>
+                  <div>Total distanse: <strong style={{ color: '#ea580c' }}>{activeSki.stravaKm || 0} km</strong></div>
                 </div>
               </div>
             </div>
@@ -1256,7 +1381,7 @@ export default function Home() {
               </div>
 
               <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
-                <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: '800' }}>🔧 Smøre- og vedlikeholdslogg</h4>
+                <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: '800' }}>🔧 Smøre- og øktlogg</h4>
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
                   <input
                     id="logInput"
@@ -1282,7 +1407,7 @@ export default function Home() {
                   </button>
                 </div>
 
-                <div style={{ maxHeight: '150px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ maxHeight: '160px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {(activeSki.maintenanceLog || []).map((l, i) => (
                     <div key={i} style={{ background: '#f8fafc', padding: '10px 14px', borderRadius: '10px', fontSize: '13px', display: 'flex', justifyContent: 'space-between', border: '1px solid #e2e8f0' }}>
                       <span style={{ fontWeight: '600' }}>{l.title}</span>
@@ -1295,17 +1420,21 @@ export default function Home() {
           </div>
         )}
 
-        {/* 3. MANUELL REGISTRERING */}
+        {/* 3. MANUELL REGISTRERING (MED STRAVA HASHTAG) */}
         {view === "manual" && (
           <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '22px', padding: '30px', maxWidth: '640px', margin: '0 auto', boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
             <h2 style={{ fontSize: '22px', margin: '0 0 20px 0', fontWeight: '800' }}>➕ Manuell registrering av skipar</h2>
             <form onSubmit={(e) => {
               e.preventDefault();
               const fd = new FormData(e.target);
+              const rawTag = fd.get("tag") || "";
+              const cleanTag = rawTag.trim().startsWith("#") ? rawTag.trim().toLowerCase() : (rawTag.trim() ? `#${rawTag.trim().toLowerCase()}` : "#ski");
+
               handleAddSki({
                 id: "ski-" + Date.now(),
                 isDemo: false,
                 memberId: fd.get("memberId"),
+                tag: cleanTag,
                 brand: fd.get("brand"),
                 model: fd.get("model"),
                 type: fd.get("type"),
@@ -1347,6 +1476,12 @@ export default function Home() {
                   <label style={{ fontSize: '13px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>Modell</label>
                   <input name="model" required placeholder="f.eks Speedmax 3D" style={{ width: '100%', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#0f172a', padding: '12px', borderRadius: '12px', boxSizing: 'border-box', fontSize: '14px' }} />
                 </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '13px', fontWeight: '700', color: '#c2410c', display: 'block', marginBottom: '6px' }}>Strava-hashtag (#kode)</label>
+                <input name="tag" placeholder="f.eks #speedmax eller #kaldski" style={{ width: '100%', background: '#fff7ed', border: '1.5px solid #fed7aa', color: '#c2410c', padding: '12px', borderRadius: '12px', boxSizing: 'border-box', fontSize: '14px', fontWeight: '700' }} />
+                <span style={{ fontSize: '12px', color: '#9a3412', marginTop: '4px', display: 'block' }}>Skriv denne hashtaggen i tittel på Strava-økta for automatisk km-logging.</span>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
@@ -1444,6 +1579,7 @@ export default function Home() {
                       id: "ski-" + Date.now(),
                       isDemo: false,
                       memberId: activeMemberId,
+                      tag: "#selector",
                       brand: fd.get("brand") || "Madshus",
                       model: fd.get("model") || "Redline Skiselector",
                       type: fd.get("type") || "Klassisk",
@@ -1494,7 +1630,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* 5. QR-SKANNING (EKTE KAMERAMODUL OG MANUELL KODE) */}
+        {/* 5. QR-SKANNING (EKTE MOBILKAMERA OG MANUELL KODE) */}
         {view === "qr" && (
           <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '22px', padding: '36px 24px', textAlign: 'center', maxWidth: '580px', margin: '0 auto', boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
             <div style={{ fontSize: '46px', marginBottom: '14px' }}>🏁</div>
@@ -1519,7 +1655,7 @@ export default function Home() {
 
             {qrScanning ? (
               <div style={{ padding: '24px', background: '#f0f9ff', borderRadius: '16px', border: '1.5px solid #bae6fd', color: '#0284c7', fontWeight: '700', fontSize: '16px' }}>
-                ⏳ Leser QR-kode og tolker spenndata...
+                ⏳ Leser QR-kode og henter måledata...
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
