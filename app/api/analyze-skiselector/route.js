@@ -46,40 +46,63 @@ Returner KUN ren JSON uten markdown-formatering, ingen backticks, kun dette JSON
 }
 `;
 
-    // Oppdatert modellnavn til gemini-3.8-flash
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+    // Prøv primærmodell først, og fall tilbake på alternative modeller ved 503 eller overbelastning
+    const candidateModels = [
+      'gemini-2.5-flash',
+      'gemini-1.5-flash',
+      'gemini-2.0-flash'
+    ];
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              { text: prompt },
-              {
-                inlineData: {
-                  mimeType: mimeType || 'image/jpeg',
-                  data: imageBase64
+    let lastError = null;
+    let result = null;
+
+    for (const model of candidateModels) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: prompt },
+                {
+                  inlineData: {
+                    mimeType: mimeType || 'image/jpeg',
+                    data: imageBase64
+                  }
                 }
-              }
-            ]
-          }
-        ]
-      })
-    });
+              ]
+            }
+          ]
+        })
+      });
 
-    if (!response.ok) {
+      if (response.ok) {
+        result = await response.json();
+        break;
+      }
+
       const errText = await response.text();
-      return NextResponse.json({ error: `Gemini feilet: ${errText}` }, { status: response.status });
+      lastError = `Modell ${model} feilet (${response.status}): ${errText}`;
+
+      // Hvis feilen er 503 (high demand) eller 429 (rate limit), fortsett til neste modell i listen
+      if (response.status === 503 || response.status === 429 || response.status === 404) {
+        continue;
+      } else {
+        return NextResponse.json({ error: lastError }, { status: response.status });
+      }
     }
 
-    const result = await response.json();
-    let textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    if (!result) {
+      return NextResponse.json({ error: `Alle modeller opptatt. Siste feil: ${lastError}` }, { status: 503 });
+    }
 
+    let textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
     textResponse = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
 
     const parsedData = JSON.parse(textResponse);
