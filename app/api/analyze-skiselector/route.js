@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 
 export const maxDuration = 30;
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export async function POST(req) {
   try {
     const rawKey = process.env.GEMINI_API_KEY;
@@ -69,15 +71,15 @@ Returner KUN ren JSON uten markdown eller backticks:
       });
     });
 
-    // Aktive Gemini-modeller som støtter multimodal bildeanalyse
-    const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash'];
-    let lastError = null;
-    let result = null;
+    const model = 'gemini-3.8-flash';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-    for (const model of candidateModels) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    let response = null;
+    let errText = '';
 
-      const response = await fetch(url, {
+    // Forsøk inntil 3 ganger ved midlertidig kapasitetsproblem (503 / 429)
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -86,19 +88,21 @@ Returner KUN ren JSON uten markdown eller backticks:
         body: JSON.stringify({ contents: [{ parts }] })
       });
 
-      if (response.ok) {
-        result = await response.json();
-        break;
+      if (response.ok) break;
+
+      errText = await response.text();
+      if ((response.status === 503 || response.status === 429) && attempt < 3) {
+        await sleep(1500 * attempt);
+        continue;
       }
-
-      const errText = await response.text();
-      lastError = `${model} feilet (${response.status}): ${errText}`;
+      break;
     }
 
-    if (!result) {
-      return NextResponse.json({ error: `Kunne ikke analysere bildene: ${lastError}` }, { status: 500 });
+    if (!response || !response.ok) {
+      return NextResponse.json({ error: `Gemini feilet (${response?.status}): ${errText}` }, { status: response ? response.status : 500 });
     }
 
+    const result = await response.json();
     let textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
     textResponse = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
 
