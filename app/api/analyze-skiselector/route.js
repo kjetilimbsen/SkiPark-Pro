@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-export const maxDuration = 30; // Sikrer at Vercel gir funksjonen god tid
+export const maxDuration = 30;
 
 export async function POST(req) {
   try {
@@ -69,8 +69,8 @@ Returner KUN ren JSON uten markdown eller backticks:
       });
     });
 
-    // Rask modellrekke: prøv standard flash direkte uten omveier
-    const candidateModels = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+    // Aktive Gemini-modeller som støtter multimodal bildeanalyse
+    const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash'];
     let lastError = null;
     let result = null;
 
