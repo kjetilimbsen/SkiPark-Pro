@@ -11,13 +11,21 @@ export async function POST(req) {
     }
 
     const apiKey = rawKey.trim();
-    const { imageBase64, mimeType } = await req.json();
+    const body = await req.json();
 
-    if (!imageBase64) {
+    // Støtt både enkeltbilde og array med flere bilder
+    let images = [];
+    if (Array.isArray(body.images) && body.images.length > 0) {
+      images = body.images;
+    } else if (body.imageBase64) {
+      images = [{ imageBase64: body.imageBase64, mimeType: body.mimeType || 'image/jpeg' }];
+    }
+
+    if (images.length === 0) {
       return NextResponse.json({ error: 'Ingen bildedata mottatt' }, { status: 400 });
     }
 
-    // 1. Spør Google API hvilke modeller som er tilgjengelige
+    // 1. Hent aktive modeller som støtter generateContent
     const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`;
     const listRes = await fetch(listUrl, {
       headers: { 'x-goog-api-key': apiKey }
@@ -44,20 +52,18 @@ export async function POST(req) {
     });
 
     const prompt = `
-Dette er et bilde av enten:
-1) En langrennsski med tekst på overflaten eller klistremerke/målelapp (f.eks Kästle RX10, Atomic Redster Skintec, Fischer Speedmax, Madshus).
-2) En Skiselector målestasjon-skjerm eller målerapport.
+Dette er ett eller flere bilder av samme langrennsski (f.eks tupp med fabrikat/grafikk, bakski med modellnavn/lengde, og butikklapp/fabrikklapp med spennverdier eller Skiselector-rapport).
 
-Analyser bildet grundig og trekk ut følgende felt så nøyaktig som mulig:
+Kombiner informasjonen fra ALLE innsendte bilder til én samlet skiprofil:
 - brand: Merke (f.eks "Kästle", "Atomic", "Fischer", "Madshus", "Rossignol", "Salomon").
 - model: Modellnavn (f.eks "RX 10 2.0", "Redster C9 Skintec", "Speedmax 3D Skate").
 - type: "Klassisk", "Skate" eller "Felleski" (hvis Skintec/R-Skin/Twin Skin -> "Felleski").
 - lengthCm: Lengde i cm hvis synlig (f.eks 192, 206, 207). Hvis ikke funnet, sett null.
-- camberType: Underlag/profil hvis oppgitt (f.eks "Cold", "Plus", "Warm", "Universal").
+- camberType: Underlag/profil (f.eks "Cold", "Plus", "Warm", "Universal").
 - grind: Slipestruktur hvis oppgitt på ski eller lapp (f.eks "CW1", "UW-1", "P5-1", "M61").
-- weightMin: Anbefalt min løpervekt i kg som tall (f.eks 65 hvis det står "<65-85 kg", eller 85 hvis "MED 85-95").
+- weightMin: Anbefalt min løpervekt i kg som tall (f.eks 65 hvis "<65-85 kg", eller 85 hvis "MED 85-95").
 - weightMax: Anbefalt maks løpervekt i kg som tall (f.eks 85 hvis "<65-85 kg", eller 95 hvis "85-95").
-- hbw: Halvvekt spennhøyde i mm hvis oppgitt på klistrelapp eller Skiselector (f.eks 1.29 eller 1.15). Hvis ikke, sett null.
+- hbw: Halvvekt spennhøyde i mm hvis oppgitt (f.eks 1.29 eller 1.15). Hvis ikke, sett null.
 - fbw: Fullvekt spennhøyde i mm hvis oppgitt (f.eks 0.22 eller 0.09). Hvis ikke, sett null.
 - pocketFront: Smørelomme foran nullpunkt i cm som tall (f.eks 37.4 eller 38). Hvis ikke, sett null.
 - pocketRear: Smørelomme bak nullpunkt i cm som tall (f.eks 26.7 eller 16). Hvis ikke, sett null.
@@ -79,6 +85,16 @@ Returner KUN ren, gyldig JSON uten markdown-blokker eller kommentarer, på denne
 }
 `;
 
+    const parts = [{ text: prompt }];
+    images.forEach(img => {
+      parts.push({
+        inlineData: {
+          mimeType: img.mimeType || 'image/jpeg',
+          data: img.imageBase64
+        }
+      });
+    });
+
     let lastError = null;
     let result = null;
 
@@ -91,21 +107,7 @@ Returner KUN ren, gyldig JSON uten markdown-blokker eller kommentarer, på denne
           'Content-Type': 'application/json',
           'x-goog-api-key': apiKey
         },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: prompt },
-                {
-                  inlineData: {
-                    mimeType: mimeType || 'image/jpeg',
-                    data: imageBase64
-                  }
-                }
-              ]
-            }
-          ]
-        })
+        body: JSON.stringify({ contents: [{ parts }] })
       });
 
       if (response.ok) {
