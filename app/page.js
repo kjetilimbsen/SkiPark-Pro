@@ -741,7 +741,7 @@ export default function Home() {
       setAnalyzingStatus(`2/2 Gemini AI leser ${updatedImages.length} bilde(r)...`);
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 45 sekunder timeout
+      const timeoutId = setTimeout(() => controller.abort(), 35000); // 35 sekunder timeout
 
       const res = await fetch('/api/analyze-skiselector', {
         method: 'POST',
