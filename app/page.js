@@ -123,17 +123,13 @@ function RacingSkiLogo({ size = 46 }) {
           <stop offset="100%" stopColor="#38bdf8" />
         </linearGradient>
       </defs>
-
       <rect x="4" y="4" width="92" height="92" rx="22" fill="#0f172a" />
       <rect x="4" y="4" width="92" height="92" rx="22" stroke="#334155" strokeWidth="2" />
-
       <line x1="18" y1="74" x2="74" y2="18" stroke="#1e293b" strokeWidth="1.5" strokeDasharray="3 3" />
       <line x1="26" y1="82" x2="82" y2="26" stroke="#1e293b" strokeWidth="1.5" strokeDasharray="3 3" />
-
       <path d="M18 64 Q50 38 82 46" stroke="#0284c7" strokeWidth="2" strokeLinecap="round" strokeDasharray="2 4" opacity="0.7" />
       <path d="M16 86 L74 24 Q82 15 90 18" stroke="url(#skiGrad1)" strokeWidth="6.5" strokeLinecap="round" />
       <path d="M26 90 L82 28 Q88 21 95 24" stroke="url(#skiGrad2)" strokeWidth="4.5" strokeLinecap="round" />
-
       <line x1="44" y1="56" x2="55" y2="44" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" />
       <line x1="52" y1="62" x2="63" y2="50" stroke="#f8fafc" strokeWidth="2.5" strokeLinecap="round" opacity="0.9" />
     </svg>
@@ -225,6 +221,41 @@ function getWaxAdvice(temp, humidity, skiType) {
   }
 }
 
+// Skalerer ned store mobilbilder før sending til API
+function compressImage(file, maxWidth = 1600, maxHeight = 1600, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxWidth || height > maxHeight) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        const base64Data = dataUrl.split(',')[1];
+        resolve({ base64: base64Data, mimeType: 'image/jpeg', previewUrl: dataUrl });
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+}
+
 export default function Home() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -240,6 +271,9 @@ export default function Home() {
   const [stravaConnected, setStravaConnected] = useState(false);
   const [showStravaModal, setShowStravaModal] = useState(false);
   const [unassignedActivities, setUnassignedActivities] = useState([]);
+
+  // Hjelpe-modal state
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   // Familiemedlemmer state
   const [members, setMembers] = useState(INITIAL_MEMBERS);
@@ -286,10 +320,11 @@ export default function Home() {
     notes: ""
   });
 
-  const [registerImage, setRegisterImage] = useState(null);
+  // Flerbilde-state for registrering
+  const [uploadedImages, setUploadedImages] = useState([]);
   const [isRegisterAnalyzing, setIsRegisterAnalyzing] = useState(false);
   const [registerAiError, setRegisterAiError] = useState("");
-  const registerFileInputRef = useRef(null);
+  const multiFileInputRef = useRef(null);
 
   // Kalibrering på aktiv ski (Skiselector & QR)
   const [isSkiselectorUpdating, setIsSkiselectorUpdating] = useState(false);
@@ -421,7 +456,7 @@ export default function Home() {
     const latN = parseFloat(lat);
     const lonN = parseFloat(lon);
     if (!name || isNaN(latN) || isNaN(lonN)) {
-      alert("Vennligst oppgi et gyldig navn og koordinater (f.eks 60.10 og 10.50).");
+      alert("Vennligst oppgi et gyldig navn og koordinater.");
       return;
     }
     const newSpot = { name, lat: latN, lon: lonN };
@@ -435,12 +470,10 @@ export default function Home() {
     if (deferredPrompt) {
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setIsInstalled(true);
-      }
+      if (outcome === 'accepted') setIsInstalled(true);
       setDeferredPrompt(null);
     } else {
-      alert("For å legge til på hjemskjermen:\n\n• På iPhone/iPad: Trykk på Del-ikonet nederst i Safari og velg «Legg til på Hjem-skjerm» 📲\n• På Android/Chrome: Trykk på de tre prikkene øverst til høyre og velg «Installer app».");
+      alert("For å legge til på hjemskjermen:\n\n• På iPhone: Del-ikon -> «Legg til på Hjem-skjerm» 📲\n• På Android: Menyprikker -> «Installer app».");
     }
   };
 
@@ -492,9 +525,7 @@ export default function Home() {
       }
     } catch (err) {
       setAuthMessage({
-        text: err.message === "Invalid login credentials"
-          ? "Feil e-post eller passord."
-          : err.message,
+        text: err.message === "Invalid login credentials" ? "Feil e-post eller passord." : err.message,
         type: "error"
       });
     } finally {
@@ -512,7 +543,7 @@ export default function Home() {
     persistSkis(updated);
     setSelectedSkiId(skiToSave.id);
     setView("detail");
-    setRegisterImage(null);
+    setUploadedImages([]);
     setNewSkiData({
       skiNumber: "",
       brand: "Fischer",
@@ -574,68 +605,70 @@ export default function Home() {
     persistSkis(updated);
   };
 
-  // AI-ANALYSE AV SKI / KLISTREMERKE VED REGISTRERING
-  const handleRegisterImageCapture = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // FLERBILDE-HÅNDTERING VED REGISTRERING
+  const handleMultipleImageSelection = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
-    setRegisterImage(URL.createObjectURL(file));
     setIsRegisterAnalyzing(true);
     setRegisterAiError("");
 
     try {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onloadend = async () => {
-        const base64data = reader.result.split(',')[1];
-        const mimeType = file.type || 'image/jpeg';
+      const compressedList = [];
+      for (const file of files) {
+        const compressed = await compressImage(file);
+        compressedList.push(compressed);
+      }
 
-        try {
-          const res = await fetch('/api/analyze-skiselector', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageBase64: base64data, mimeType })
-          });
+      const updatedImages = [...uploadedImages, ...compressedList];
+      setUploadedImages(updatedImages);
 
-          const json = await res.json();
-          if (!res.ok) {
-            setRegisterAiError(json.error || `Serverfeil: ${res.status}`);
-            setIsRegisterAnalyzing(false);
-            return;
-          }
+      // Send alle bildene til Gemini API-et i samme forespørsel
+      const res = await fetch('/api/analyze-skiselector', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          images: updatedImages.map(img => ({
+            imageBase64: img.base64,
+            mimeType: img.mimeType
+          }))
+        })
+      });
 
-          const d = json.data || {};
-          setNewSkiData(prev => ({
-            ...prev,
-            brand: d.brand && d.brand !== "Ukjent" ? d.brand : prev.brand,
-            model: d.model || prev.model,
-            type: d.type || prev.type,
-            tag: d.model ? `#${d.model.toLowerCase().replace(/[^a-z0-9]/g, '')}` : prev.tag,
-            lengthCm: d.lengthCm ? Number(d.lengthCm) : prev.lengthCm,
-            camberType: d.camberType || prev.camberType,
-            grind: d.grind || prev.grind,
-            weightKgMin: d.weightMin ? Number(d.weightMin) : prev.weightKgMin,
-            weightKgMax: d.weightMax ? Number(d.weightMax) : prev.weightKgMax,
-            hbw: d.hbw !== null && d.hbw !== undefined ? String(d.hbw) : prev.hbw,
-            fbw: d.fbw !== null && d.fbw !== undefined ? String(d.fbw) : prev.fbw,
-            pocketFrontCm: d.pocketFront !== null && d.pocketFront !== undefined ? String(d.pocketFront) : prev.pocketFrontCm,
-            pocketRearCm: d.pocketRear !== null && d.pocketRear !== undefined ? String(d.pocketRear) : prev.pocketRearCm,
-            notes: "Registrert via AI-bildegjenkjenning av ski/klistrelapp."
-          }));
+      const json = await res.json();
+      if (!res.ok) {
+        setRegisterAiError(json.error || `Serverfeil: ${res.status}`);
+        setIsRegisterAnalyzing(false);
+        return;
+      }
 
-          setIsRegisterAnalyzing(false);
-        } catch (fetchErr) {
-          setRegisterAiError(`Nettverksfeil: ${fetchErr.message}`);
-          setIsRegisterAnalyzing(false);
-        }
-      };
+      const d = json.data || {};
+      setNewSkiData(prev => ({
+        ...prev,
+        brand: d.brand && d.brand !== "Ukjent" ? d.brand : prev.brand,
+        model: d.model || prev.model,
+        type: d.type || prev.type,
+        tag: d.model ? `#${d.model.toLowerCase().replace(/[^a-z0-9]/g, '')}` : prev.tag,
+        lengthCm: d.lengthCm ? Number(d.lengthCm) : prev.lengthCm,
+        camberType: d.camberType || prev.camberType,
+        grind: d.grind || prev.grind,
+        weightKgMin: d.weightMin ? Number(d.weightMin) : prev.weightKgMin,
+        weightKgMax: d.weightMax ? Number(d.weightMax) : prev.weightKgMax,
+        hbw: d.hbw !== null && d.hbw !== undefined ? String(d.hbw) : prev.hbw,
+        fbw: d.fbw !== null && d.fbw !== undefined ? String(d.fbw) : prev.fbw,
+        pocketFrontCm: d.pocketFront !== null && d.pocketFront !== undefined ? String(d.pocketFront) : prev.pocketFrontCm,
+        pocketRearCm: d.pocketRear !== null && d.pocketRear !== undefined ? String(d.pocketRear) : prev.pocketRearCm,
+        notes: `Innlest fra ${updatedImages.length} bilde(r) via Gemini AI.`
+      }));
+
+      setIsRegisterAnalyzing(false);
     } catch (err) {
-      setRegisterAiError(`Klarte ikke å lese bildefilen: ${err.message}`);
+      setRegisterAiError(`Klarte ikke å behandle bildene: ${err.message}`);
       setIsRegisterAnalyzing(false);
     }
   };
 
-  // AI-ANALYSE AV SKISELECTOR-BILDE PÅ DETALJSIDEN
+  // SKISELECTOR BILDE PÅ DETALJSIDEN
   const handleUpdateSkiWithSkiselector = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !activeSki) return;
@@ -644,57 +677,47 @@ export default function Home() {
     setSkiselectorError("");
 
     try {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onloadend = async () => {
-        const base64data = reader.result.split(',')[1];
-        const mimeType = file.type || 'image/jpeg';
+      const { base64, mimeType } = await compressImage(file);
 
-        try {
-          const res = await fetch('/api/analyze-skiselector', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageBase64: base64data, mimeType })
-          });
+      const res = await fetch('/api/analyze-skiselector', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: base64, mimeType })
+      });
 
-          const json = await res.json();
-          if (!res.ok) {
-            setSkiselectorError(json.error || `Feil: ${res.status}`);
-            setIsSkiselectorUpdating(false);
-            return;
-          }
+      const json = await res.json();
+      if (!res.ok) {
+        setSkiselectorError(json.error || `Feil: ${res.status}`);
+        setIsSkiselectorUpdating(false);
+        return;
+      }
 
-          const d = json.data || {};
-          const updated = skis.map(s => s.id === activeSki.id ? {
-            ...s,
-            hbw: d.hbw !== null && d.hbw !== undefined ? Number(d.hbw) : s.hbw,
-            fbw: d.fbw !== null && d.fbw !== undefined ? Number(d.fbw) : s.fbw,
-            pocketFrontCm: d.pocketFront !== null && d.pocketFront !== undefined ? Number(d.pocketFront) : s.pocketFrontCm,
-            pocketRearCm: d.pocketRear !== null && d.pocketRear !== undefined ? Number(d.pocketRear) : s.pocketRearCm,
-            weightKgMin: d.weightMin ? Number(d.weightMin) : s.weightKgMin,
-            weightKgMax: d.weightMax ? Number(d.weightMax) : s.weightKgMax,
-            grind: d.grind || s.grind,
-            maintenanceLog: [
-              { date: new Date().toISOString().split("T")[0], title: `Skiselector-kalibrering: HBW ${d.hbw || '-'} mm, FBW ${d.fbw || '-'} mm`, type: "Måling" },
-              ...(s.maintenanceLog || [])
-            ]
-          } : s);
+      const d = json.data || {};
+      const updated = skis.map(s => s.id === activeSki.id ? {
+        ...s,
+        hbw: d.hbw !== null && d.hbw !== undefined ? Number(d.hbw) : s.hbw,
+        fbw: d.fbw !== null && d.fbw !== undefined ? Number(d.fbw) : s.fbw,
+        pocketFrontCm: d.pocketFront !== null && d.pocketFront !== undefined ? Number(d.pocketFront) : s.pocketFrontCm,
+        pocketRearCm: d.pocketRear !== null && d.pocketRear !== undefined ? Number(d.pocketRear) : s.pocketRearCm,
+        weightKgMin: d.weightMin ? Number(d.weightMin) : s.weightKgMin,
+        weightKgMax: d.weightMax ? Number(d.weightMax) : s.weightKgMax,
+        grind: d.grind || s.grind,
+        maintenanceLog: [
+          { date: new Date().toISOString().split("T")[0], title: `Skiselector-oppdatering: HBW ${d.hbw || '-'} mm, FBW ${d.fbw || '-'} mm`, type: "Måling" },
+          ...(s.maintenanceLog || [])
+        ]
+      } : s);
 
-          persistSkis(updated);
-          setIsSkiselectorUpdating(false);
-          alert(`✓ Skiselector-data oppdatert for ${activeSki.brand} ${activeSki.model}!`);
-        } catch (fetchErr) {
-          setSkiselectorError(`Feil: ${fetchErr.message}`);
-          setIsSkiselectorUpdating(false);
-        }
-      };
+      persistSkis(updated);
+      setIsSkiselectorUpdating(false);
+      alert(`✓ Skiselector-data oppdatert for ${activeSki.brand} ${activeSki.model}!`);
     } catch (err) {
-      setSkiselectorError(`Klarte ikke å lese bilde: ${err.message}`);
+      setSkiselectorError(`Klarte ikke å behandle bilde: ${err.message}`);
       setIsSkiselectorUpdating(false);
     }
   };
 
-  // QR-KALIBRERING PÅ DETALJSIDEN FOR AKTIV SKI
+  // QR-KALIBRERING PÅ DETALJSIDEN
   const handleDetailQrProcess = (payload) => {
     if (!activeSki) return;
     setDetailQrScanning(true);
@@ -923,7 +946,7 @@ export default function Home() {
     <div style={{ minHeight: '100vh', background: '#f8fafc', color: '#0f172a', padding: '24px 20px', fontFamily: 'system-ui, -apple-system, sans-serif', boxSizing: 'border-box' }}>
       <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
 
-        {/* TOPPLINJE */}
+        {/* TOPPLINJE MED SPØRSMÅLSTEGN / HJELP */}
         <header style={{ background: '#ffffff', borderRadius: '20px', padding: '16px 24px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <RacingSkiLogo size={46} />
@@ -936,6 +959,29 @@ export default function Home() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            {/* ❓ HJELPE-KNAPP */}
+            <button
+              onClick={() => setShowHelpModal(true)}
+              style={{
+                background: '#eff6ff',
+                border: '1.5px solid #93c5fd',
+                color: '#1e40af',
+                width: '40px',
+                height: '40px',
+                borderRadius: '12px',
+                fontSize: '18px',
+                fontWeight: '900',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 4px rgba(2, 132, 199, 0.08)'
+              }}
+              title="Bruksanvisning & smarte tips"
+            >
+              ❓
+            </button>
+
             <button
               onClick={() => setShowStravaModal(true)}
               style={{
@@ -1009,6 +1055,64 @@ export default function Home() {
             </button>
           </div>
         </header>
+
+        {/* BRUKSANVISNING & TIPS (MODAL / DIALOG) */}
+        {showHelpModal && (
+          <div style={{ background: '#ffffff', border: '2px solid #0284c7', borderRadius: '20px', padding: '26px', marginTop: '16px', boxShadow: '0 12px 30px rgba(2, 132, 199, 0.12)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '26px' }}>💡</span>
+                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '800', color: '#0f172a' }}>
+                  Hurtigguide til SkiPark Pro
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowHelpModal(false)}
+                style={{ background: '#f1f5f9', border: 'none', width: '34px', height: '34px', borderRadius: '50%', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px', color: '#475569' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+              <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '15px', fontWeight: '800', color: '#0284c7', marginBottom: '6px' }}>
+                  📸 1. Registrering med flere bilder
+                </div>
+                <div style={{ fontSize: '13px', color: '#475569', lineHeight: '1.5' }}>
+                  Ta gjerne <strong>både</strong> bilde av tuppen (merke/modell) og bakenden/klistrelappen (spennhøyde, vekt og slipestruktur). Gemini AI kombinerer bildene automatisk!
+                </div>
+              </div>
+
+              <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '15px', fontWeight: '800', color: '#ea580c', marginBottom: '6px' }}>
+                  ⚡ 2. Strava-synkronisering (#tag)
+                </div>
+                <div style={{ fontSize: '13px', color: '#475569', lineHeight: '1.5' }}>
+                  Gi hvert par en unik kode (f.eks. <code>#speedmax</code> eller <code>#01</code>). Skriv koden i navnet på Strava-økta di, så logges kilometerne direkte inn på riktig par.
+                </div>
+              </div>
+
+              <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '15px', fontWeight: '800', color: '#059669', marginBottom: '6px' }}>
+                  🌤️ 3. Dagens Skivelger & Smøring
+                </div>
+                <div style={{ fontSize: '13px', color: '#475569', lineHeight: '1.5' }}>
+                  Appen matcher skiparkens spenn og optimale temperatur opp mot live Yr-vær og den valgte løperens vekt. Smøretipset gir deg både feste- og glideranbefaling.
+                </div>
+              </div>
+
+              <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '15px', fontWeight: '800', color: '#7c3aed', marginBottom: '6px' }}>
+                  📊 4. Måledata & Butikk-QR
+                </div>
+                <div style={{ fontSize: '13px', color: '#475569', lineHeight: '1.5' }}>
+                  Har du målt skiene i en Skiselector-maskin eller fått et målekort med QR-kode fra f.eks. Skiplukkern? Gå inn på skien for å oppdatere spennkurven direkte.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* DIALOG FOR NYTT FAMILIEMEDLEM */}
         {showAddMember && (
@@ -1299,7 +1403,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* FANER (KUN DE 3 HOVEDFUNKSJONENE) */}
+        {/* FANER */}
         <nav style={{ display: 'flex', gap: '10px', margin: '20px 0', flexWrap: 'wrap' }}>
           {[
             { id: "park", label: parkTabLabel },
@@ -1460,7 +1564,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* 2. DETALJVISNING MED SAMLET KALIBRERING (SKISELECTOR & QR) */}
+        {/* 2. DETALJVISNING MED SAMLET KALIBRERING */}
         {view === "detail" && activeSki && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
@@ -1630,7 +1734,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Spennkurve SVG UTEN hardkodede tall */}
+            {/* Spennkurve SVG */}
             <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                 <div>
@@ -1722,27 +1826,30 @@ export default function Home() {
           </div>
         )}
 
-        {/* 3. REGISTRER SKI MED KAMERA/GALLERI OG KALLENAVN/NUMMER */}
+        {/* 3. REGISTRER SKI MED FLERBILDE-SKANNING (TUPP + BAKENDE/LAPP) */}
         {view === "manual" && (
           <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '22px', padding: '30px', maxWidth: '680px', margin: '0 auto', boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <div>
                 <h2 style={{ fontSize: '22px', margin: 0, fontWeight: '800' }}>➕ Registrer skipar</h2>
-                <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#64748b' }}>Ta bilde av ski og klistrelapp, eller fyll ut manuelt.</p>
+                <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#64748b' }}>
+                  Last opp 1 eller flere bilder (f.eks. tupp + bakski/målelapp), eller fyll ut manuelt.
+                </p>
               </div>
             </div>
 
-            {/* FILVELGER (BÅDE KAMERA OG KAMERARULL) */}
+            {/* FLERBILDE-INPUT (multiple) */}
             <input
               type="file"
               accept="image/*"
-              ref={registerFileInputRef}
-              onChange={handleRegisterImageCapture}
+              multiple
+              ref={multiFileInputRef}
+              onChange={handleMultipleImageSelection}
               style={{ display: 'none' }}
             />
 
             <div
-              onClick={() => registerFileInputRef.current?.click()}
+              onClick={() => multiFileInputRef.current?.click()}
               style={{
                 border: '2px dashed #0284c7',
                 borderRadius: '16px',
@@ -1750,15 +1857,19 @@ export default function Home() {
                 textAlign: 'center',
                 cursor: 'pointer',
                 background: '#f0f9ff',
-                marginBottom: '24px'
+                marginBottom: '20px'
               }}
             >
               <div style={{ fontSize: '32px', marginBottom: '6px' }}>📸 🖼️</div>
               <div style={{ fontSize: '15px', fontWeight: '800', color: '#0284c7' }}>
-                {isRegisterAnalyzing ? "⏳ Gemini AI analyserer ski og klistrelapp..." : "Ta bilde eller velg fra kamerarull (AI fyller ut for deg)"}
+                {isRegisterAnalyzing 
+                  ? "⏳ Gemini AI analyserer bildene og kombinerer data..." 
+                  : uploadedImages.length > 0 
+                    ? "+ Legg til flere bilder av skien (f.eks bakende/lapp)" 
+                    : "Last opp 1–3 bilder av skien (tupp, modell og målelapp)"}
               </div>
               <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
-                Leser automatisk merke, modell, lengde, vektintervall og måletall
+                Tips: Velg både tuppen med merke og bakenden med spenn/vekt[cite: 2, 3]. AI slår alt sammen automatisk!
               </div>
             </div>
 
@@ -1768,16 +1879,21 @@ export default function Home() {
               </div>
             )}
 
-            {registerImage && (
-              <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', border: '1px solid #cbd5e1', maxHeight: '160px', background: '#000', display: 'flex', justifyContent: 'center', marginBottom: '18px' }}>
-                <img src={registerImage} alt="Registreringsbilde" style={{ maxHeight: '160px', width: 'auto', objectFit: 'contain' }} />
-                <button
-                  type="button"
-                  onClick={() => { setRegisterImage(null); }}
-                  style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.7)', color: '#fff', border: 'none', borderRadius: '6px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}
-                >
-                  ✕ Fjern
-                </button>
+            {/* GALLERI OVER VALGTE BILDER */}
+            {uploadedImages.length > 0 && (
+              <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', marginBottom: '20px', paddingBottom: '6px' }}>
+                {uploadedImages.map((img, idx) => (
+                  <div key={idx} style={{ position: 'relative', width: '90px', height: '90px', borderRadius: '10px', overflow: 'hidden', border: '1.5px solid #cbd5e1', flexShrink: 0 }}>
+                    <img src={img.previewUrl} alt={`Ski bilde ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <button
+                      type="button"
+                      onClick={() => setUploadedImages(uploadedImages.filter((_, i) => i !== idx))}
+                      style={{ position: 'absolute', top: '3px', right: '3px', background: 'rgba(0,0,0,0.7)', color: '#fff', border: 'none', borderRadius: '50%', width: '20px', height: '20px', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -1831,7 +1947,7 @@ export default function Home() {
 
                 <div>
                   <label style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a', display: 'block', marginBottom: '6px' }}>
-                    Par-nummer / Kallenavn
+                    Par-nummer / ID
                   </label>
                   <input
                     value={newSkiData.skiNumber}
@@ -1929,7 +2045,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* SPENNTALL (Valgfritt) */}
+              {/* SPENNTALL FRA AI-AVLESNING */}
               <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                 <div style={{ fontSize: '12px', fontWeight: '800', color: '#475569', marginBottom: '8px' }}>
                   MÅLEVERDIER FRA LAPP / SKI (HVIS SYNLIG)
