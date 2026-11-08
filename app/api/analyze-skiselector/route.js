@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 
-export const maxDuration = 30;
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+export const maxDuration = 45;
 
 export async function POST(req) {
   try {
@@ -29,8 +27,8 @@ export async function POST(req) {
     }
 
     const prompt = `
-Dette er 1 eller flere bilder av samme langrennsski (f.eks tupp med fabrikat, og bakski med modell, lengde og målelapp).
-Kombiner informasjonen fra bildene til ett felles JSON-objekt:
+Dette er bilder av samme langrennsski (tupp og bakende/målelapp).
+Trekk ut data til ren JSON:
 - brand: Merke (f.eks "Kästle", "Atomic", "Fischer", "Madshus", "Rossignol", "Salomon").
 - model: Modellnavn (f.eks "RX 10 2.0", "Redster C9 Skintec", "Speedmax 3D Skate").
 - type: "Klassisk", "Skate" eller "Felleski" (hvis Skintec/R-Skin -> "Felleski").
@@ -44,7 +42,7 @@ Kombiner informasjonen fra bildene til ett felles JSON-objekt:
 - pocketFront: Smørelomme foran nullpunkt i cm som tall (f.eks 37.4). Ellers null.
 - pocketRear: Smørelomme bak nullpunkt i cm som tall (f.eks 26.7 eller 16). Ellers null.
 
-Returner KUN ren JSON uten markdown eller backticks:
+Returner KUN gyldig JSON uten markdown eller backticks:
 {
   "brand": "string",
   "model": "string",
@@ -71,21 +69,14 @@ Returner KUN ren JSON uten markdown eller backticks:
       });
     });
 
-    // Fallback-rekkefølge: Prøv 3.8-flash først, deretter 2.5-flash eller 2.5-pro hvis en modell er overbelastet (503)
-    const modelsToTry = [
-      'gemini-3.8-flash',
-      'gemini-2.5-flash',
-      'gemini-2.5-pro'
-    ];
-
+    const candidateModels = ['gemini-2.5-flash', 'gemini-3.8-flash'];
     let lastError = null;
     let result = null;
 
-    for (const model of modelsToTry) {
+    for (const model of candidateModels) {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-      // Gjør inntil 2 forsøk per modell ved 503 eller 429
-      for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
         const response = await fetch(url, {
           method: 'POST',
           headers: {
@@ -102,17 +93,9 @@ Returner KUN ren JSON uten markdown eller backticks:
 
         const errText = await response.text();
         lastError = `${model} feilet (${response.status}): ${errText}`;
-
-        if (response.status === 503 || response.status === 429) {
-          await sleep(1000 * attempt);
-          continue;
-        } else {
-          // Hvis det er en permanent feil (f.eks. 404), gå direkte til neste modell
-          break;
-        }
+      } catch (fErr) {
+        lastError = fErr.message;
       }
-
-      if (result) break;
     }
 
     if (!result) {
