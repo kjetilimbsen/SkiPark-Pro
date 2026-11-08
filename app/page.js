@@ -228,7 +228,7 @@ function getWaxAdvice(temp, humidity, skiType) {
 }
 
 // Skalerer ned store mobilbilder til maks 1000px for lynrask opplasting og analyse
-function compressImage(file, maxWidth = 1000, maxHeight = 1000, quality = 0.75) {
+function compressImage(file, maxWidth = 800, maxHeight = 800, quality = 0.70) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -741,7 +741,7 @@ export default function Home() {
       setAnalyzingStatus(`2/2 Gemini AI leser ${updatedImages.length} bilde(r)...`);
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 sekunder timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 45 sekunder timeout
 
       const res = await fetch('/api/analyze-skiselector', {
         method: 'POST',
