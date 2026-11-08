@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
 
-export const maxDuration = 45;
-
 export async function POST(req) {
   try {
     const rawKey = process.env.GEMINI_API_KEY;
@@ -26,39 +24,8 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Ingen bildedata mottatt' }, { status: 400 });
     }
 
-    // 1. Spør Google hvilke modeller som faktisk er aktive for denne API-nøkkelen
-    let availableModels = [];
-    try {
-      const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`;
-      const listRes = await fetch(listUrl, {
-        headers: { 'x-goog-api-key': apiKey }
-      });
-
-      if (listRes.ok) {
-        const listData = await listRes.json();
-        availableModels = (listData.models || [])
-          .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
-          .map(m => m.name.replace(/^models\//, ''));
-      }
-    } catch (e) {
-      // Fortsett med reserveliste hvis list-kallet feiler
-    }
-
-    // Sorter slik at Flash-modeller (raskest og best på syn) testes først
-    const flashModels = availableModels.filter(m => m.toLowerCase().includes('flash'));
-    const otherModels = availableModels.filter(m => !m.toLowerCase().includes('flash'));
-    
-    // Sett sammen prioriteringslisten, med solide fallback-modeller i bakhånd
-    const modelsToTry = [
-      ...flashModels,
-      ...otherModels,
-      'gemini-2.5-flash',
-      'gemini-3.8-flash',
-      'gemini-2.5-pro'
-    ].filter((v, i, a) => a.indexOf(v) === i); // Fjern duplikater
-
     const prompt = `
-Dette er bilder av samme langrennsski (f.eks tupp med fabrikat, og bakski med modell, lengde og målelapp).
+Dette er bilder av samme langrennsski (f.eks tupp og bakende/målelapp).
 Kombiner informasjonen fra bildene til ett felles JSON-objekt:
 - brand: Merke (f.eks "Kästle", "Atomic", "Fischer", "Madshus", "Rossignol", "Salomon").
 - model: Modellnavn (f.eks "RX 10 2.0", "Redster C9 Skintec", "Speedmax 3D Skate").
@@ -100,40 +67,24 @@ Returner KUN ren JSON uten markdown eller backticks:
       });
     });
 
-    let lastError = null;
-    let result = null;
+    // Kall gemini-2.5-flash direkte uten listModels eller venteløkker
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-    // Prøv modellene i rekkefølge til én svarer med 200 OK
-    for (const model of modelsToTry) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey
+      },
+      body: JSON.stringify({ contents: [{ parts }] })
+    });
 
-      try {
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': apiKey
-          },
-          body: JSON.stringify({ contents: [{ parts }] })
-        });
-
-        if (response.ok) {
-          result = await response.json();
-          break;
-        }
-
-        const errText = await response.text();
-        lastError = `${model} feilet (${response.status}): ${errText}`;
-        // Hvis modellen er 503 (opptatt) eller 404 (finnes ikke), går løkken umiddelbart til neste modell!
-      } catch (err) {
-        lastError = err.message;
-      }
+    if (!response.ok) {
+      const errText = await response.text();
+      return NextResponse.json({ error: `Gemini feilet (${response.status}): ${errText}` }, { status: response.status });
     }
 
-    if (!result) {
-      return NextResponse.json({ error: `Kunne ikke analysere bildene: ${lastError}` }, { status: 503 });
-    }
-
+    const result = await response.json();
     let textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
     textResponse = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
 
