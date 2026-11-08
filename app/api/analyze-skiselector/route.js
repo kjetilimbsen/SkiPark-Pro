@@ -71,38 +71,54 @@ Returner KUN ren JSON uten markdown eller backticks:
       });
     });
 
-    const model = 'gemini-3.8-flash';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    // Fallback-rekkefølge: Prøv 3.8-flash først, deretter 2.5-flash eller 2.5-pro hvis en modell er overbelastet (503)
+    const modelsToTry = [
+      'gemini-3.8-flash',
+      'gemini-2.5-flash',
+      'gemini-2.5-pro'
+    ];
 
-    let response = null;
-    let errText = '';
+    let lastError = null;
+    let result = null;
 
-    // Forsøk inntil 3 ganger ved midlertidig kapasitetsproblem (503 / 429)
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey
-        },
-        body: JSON.stringify({ contents: [{ parts }] })
-      });
+    for (const model of modelsToTry) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-      if (response.ok) break;
+      // Gjør inntil 2 forsøk per modell ved 503 eller 429
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey
+          },
+          body: JSON.stringify({ contents: [{ parts }] })
+        });
 
-      errText = await response.text();
-      if ((response.status === 503 || response.status === 429) && attempt < 3) {
-        await sleep(1500 * attempt);
-        continue;
+        if (response.ok) {
+          result = await response.json();
+          break;
+        }
+
+        const errText = await response.text();
+        lastError = `${model} feilet (${response.status}): ${errText}`;
+
+        if (response.status === 503 || response.status === 429) {
+          await sleep(1000 * attempt);
+          continue;
+        } else {
+          // Hvis det er en permanent feil (f.eks. 404), gå direkte til neste modell
+          break;
+        }
       }
-      break;
+
+      if (result) break;
     }
 
-    if (!response || !response.ok) {
-      return NextResponse.json({ error: `Gemini feilet (${response?.status}): ${errText}` }, { status: response ? response.status : 500 });
+    if (!result) {
+      return NextResponse.json({ error: `Kunne ikke analysere bildene: ${lastError}` }, { status: 503 });
     }
 
-    const result = await response.json();
     let textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
     textResponse = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
 
