@@ -1,15 +1,93 @@
 import { NextResponse } from 'next/server';
 
-export const maxDuration = 45;
+export const maxDuration = 30;
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+function parseSkiText(text) {
+  const result = {
+    brand: null,
+    model: null,
+    type: "Klassisk",
+    lengthCm: null,
+    camberType: "Universal",
+    grind: "Standard",
+    weightMin: null,
+    weightMax: null,
+    hbw: null,
+    fbw: null,
+    pocketFront: null,
+    pocketRear: null
+  };
+
+  if (!text) return result;
+
+  const t = text.replace(/,/g, '.');
+
+  // Merker
+  const brands = ["Kästle", "Kaestle", "Fischer", "Madshus", "Rossignol", "Atomic", "Salomon", "Peltonen"];
+  for (const b of brands) {
+    if (new RegExp(`\\b${b}\\b`, 'i').test(t)) {
+      result.brand = b === "Kaestle" ? "Kästle" : b;
+      break;
+    }
+  }
+
+  // Modeller
+  if (/RX\s*10(\s*2\.0)?/i.test(t)) result.model = "RX 10 2.0";
+  else if (/Speedmax/i.test(t)) result.model = "Speedmax 3D";
+  else if (/Redline/i.test(t)) result.model = "Redline 3.0";
+  else if (/Redster/i.test(t)) result.model = "Redster";
+  else if (/Delta/i.test(t)) result.model = "Delta Sport";
+
+  // Stilart
+  if (/skate|skating/i.test(t)) result.type = "Skate";
+  else if (/skin|skintec|r-skin|twin\s*skin/i.test(t)) result.type = "Felleski";
+  else if (/classic|klassisk/i.test(t)) result.type = "Klassisk";
+
+  // Lengde (typisk 180-210 cm)
+  const lengthMatch = t.match(/\b(18[0-9]|19[0-9]|20[0-9]|21[0])\s*(cm)?\b/i);
+  if (lengthMatch) result.lengthCm = Number(lengthMatch[1]);
+
+  // Vekt (f.eks 70-80 kg, <65-85 kg, el.l.)
+  const weightRangeMatch = t.match(/(\d{2,3})\s*[-–/]\s*(\d{2,3})\s*kg/i);
+  if (weightRangeMatch) {
+    result.weightMin = Number(weightRangeMatch[1]);
+    result.weightMax = Number(weightRangeMatch[2]);
+  } else {
+    const singleWeightMatch = t.match(/(\d{2,3})\s*kg/i);
+    if (singleWeightMatch) {
+      result.weightMin = Number(singleWeightMatch[1]) - 5;
+      result.weightMax = Number(singleWeightMatch[1]) + 5;
+    }
+  }
+
+  // HBW (halvvekt spennhøyde, f.eks HBW 1.29 eller HBW: 1.15)
+  const hbwMatch = t.match(/HBW\s*[:=]?\s*(\d+\.\d+)/i) || t.match(/\b1\.\d{2}\b/);
+  if (hbwMatch) result.hbw = Number(hbwMatch[1] || hbwMatch[0]);
+
+  // FBW (fullvekt spennhøyde, f.eks FBW 0.22)
+  const fbwMatch = t.match(/FBW\s*[:=]?\s*(\d+\.\d+)/i) || t.match(/\b0\.\d{2}\b/);
+  if (fbwMatch) result.fbw = Number(fbwMatch[1] || fbwMatch[0]);
+
+  // Smørelommer (lomme foran/bak)
+  const pocketFrontMatch = t.match(/(?:lomme\s*foran|front|pocket\s*front)\s*[:=]?\s*(\d+)/i);
+  if (pocketFrontMatch) result.pocketFront = Number(pocketFrontMatch[1]);
+
+  const pocketRearMatch = t.match(/(?:lomme\s*bak|rear|back|pocket\s*rear)\s*[:=]?\s*(\d+)/i);
+  if (pocketRearMatch) result.pocketRear = Number(pocketRearMatch[1]);
+
+  // Slipestruktur
+  const grindMatch = t.match(/\b([A-Z]{1,3}\s*[-]?\s*\d{1,2}|M61|P5-1|CW1|UW-1)\b/i);
+  if (grindMatch) result.grind = grindMatch[0].toUpperCase();
+
+  return result;
+}
 
 export async function POST(req) {
   try {
     const rawKey = process.env.GEMINI_API_KEY;
     if (!rawKey) {
       return NextResponse.json(
-        { error: 'GEMINI_API_KEY mangler i Environment Variables på Vercel.' },
+        { error: 'API-nøkkel mangler i Environment Variables på Vercel.' },
         { status: 500 }
       );
     }
@@ -28,91 +106,49 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Ingen bildedata mottatt' }, { status: 400 });
     }
 
-    const prompt = `
-Dette er bilder av samme langrennsski (f.eks tupp og bakende/målelapp).
-Kombiner informasjonen fra bildene til ett felles JSON-objekt:
-- brand: Merke (f.eks "Kästle", "Atomic", "Fischer", "Madshus", "Rossignol", "Salomon").
-- model: Modellnavn (f.eks "RX 10 2.0", "Redster C9 Skintec", "Speedmax 3D Skate").
-- type: "Klassisk", "Skate" eller "Felleski" (hvis Skintec/R-Skin -> "Felleski").
-- lengthCm: Lengde i cm hvis synlig (f.eks 192, 206, 207). Ellers null.
-- camberType: Profil (f.eks "Cold", "Plus", "Warm", "Universal").
-- grind: Slipestruktur hvis oppgitt (f.eks "CW1", "UW-1", "P5-1", "M61").
-- weightMin: Min utøvervekt i kg som tall (f.eks 65 hvis "<65-85 kg", eller 85 hvis "85-95").
-- weightMax: Maks utøvervekt i kg som tall (f.eks 85 hvis "<65-85 kg", eller 95 hvis "85-95").
-- hbw: Halvvekt spennhøyde i mm hvis oppgitt (f.eks 1.29). Ellers null.
-- fbw: Fullvekt spennhøyde i mm hvis oppgitt (f.eks 0.22). Ellers null.
-- pocketFront: Smørelomme foran nullpunkt i cm som tall (f.eks 37.4). Ellers null.
-- pocketRear: Smørelomme bak nullpunkt i cm som tall (f.eks 26.7 eller 16). Ellers null.
+    // Google Cloud Vision Text Detection REST API
+    const visionUrl = `https://vision.googleapis.com/v1/images:annotate?key=${encodeURIComponent(apiKey)}`;
 
-Returner KUN gyldig JSON uten markdown eller backticks:
-{
-  "brand": "string",
-  "model": "string",
-  "type": "string",
-  "lengthCm": number,
-  "camberType": "string",
-  "grind": "string",
-  "weightMin": number,
-  "weightMax": number,
-  "hbw": number,
-  "fbw": number,
-  "pocketFront": number,
-  "pocketRear": number
-}
-`;
+    const requests = images.map(img => ({
+      image: { content: img.imageBase64 },
+      features: [{ type: 'TEXT_DETECTION' }]
+    }));
 
-    const parts = [{ text: prompt }];
-    images.forEach(img => {
-      parts.push({
-        inlineData: {
-          mimeType: img.mimeType || 'image/jpeg',
-          data: img.imageBase64
-        }
-      });
+    const visionRes = await fetch(visionUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requests })
     });
 
-    const model = 'gemini-3.8-flash';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    if (!visionRes.ok) {
+      const errText = await visionRes.text();
+      return NextResponse.json({ error: `Vision OCR feilet (${visionRes.status}): ${errText}` }, { status: visionRes.status });
+    }
 
-    let response = null;
-    let errText = '';
+    const visionData = await visionRes.json();
 
-    // Gjør inntil 3 forsøk dersom Google har en midlertidig 503-topp
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': apiKey
-          },
-          body: JSON.stringify({ contents: [{ parts }] })
-        });
-
-        if (response.ok) break;
-
-        errText = await response.text();
-        if (response.status === 503 || response.status === 429) {
-          await sleep(1200 * attempt);
-          continue;
-        }
-        break;
-      } catch (fErr) {
-        errText = fErr.message;
-        await sleep(1000);
+    // Slå sammen all oppdaget tekst fra bildene
+    let combinedRawText = "";
+    (visionData.responses || []).forEach(res => {
+      if (res.fullTextAnnotation && res.fullTextAnnotation.text) {
+        combinedRawText += "\n" + res.fullTextAnnotation.text;
       }
+    });
+
+    if (!combinedRawText.trim()) {
+      return NextResponse.json({ 
+        error: "Fant ingen lesbar tekst på bildene. Prøv å ta et bilde tettere på klistrelappen eller tuppen." 
+      }, { status: 422 });
     }
 
-    if (!response || !response.ok) {
-      return NextResponse.json({ error: `Gemini feilet (${response?.status}): ${errText}` }, { status: response ? response.status : 500 });
-    }
+    // Trekk ut data med regelbasert parsing
+    const parsed = parseSkiText(combinedRawText);
 
-    const result = await response.json();
-    let textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    textResponse = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+    return NextResponse.json({ 
+      data: parsed,
+      rawText: combinedRawText.trim()
+    });
 
-    const parsedData = JSON.parse(textResponse);
-    return NextResponse.json({ data: parsedData });
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
