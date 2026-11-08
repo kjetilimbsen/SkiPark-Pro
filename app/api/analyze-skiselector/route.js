@@ -26,9 +26,40 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Ingen bildedata mottatt' }, { status: 400 });
     }
 
+    // 1. Spør Google hvilke modeller som faktisk er aktive for denne API-nøkkelen
+    let availableModels = [];
+    try {
+      const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`;
+      const listRes = await fetch(listUrl, {
+        headers: { 'x-goog-api-key': apiKey }
+      });
+
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        availableModels = (listData.models || [])
+          .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
+          .map(m => m.name.replace(/^models\//, ''));
+      }
+    } catch (e) {
+      // Fortsett med reserveliste hvis list-kallet feiler
+    }
+
+    // Sorter slik at Flash-modeller (raskest og best på syn) testes først
+    const flashModels = availableModels.filter(m => m.toLowerCase().includes('flash'));
+    const otherModels = availableModels.filter(m => !m.toLowerCase().includes('flash'));
+    
+    // Sett sammen prioriteringslisten, med solide fallback-modeller i bakhånd
+    const modelsToTry = [
+      ...flashModels,
+      ...otherModels,
+      'gemini-2.5-flash',
+      'gemini-3.8-flash',
+      'gemini-2.5-pro'
+    ].filter((v, i, a) => a.indexOf(v) === i); // Fjern duplikater
+
     const prompt = `
-Dette er bilder av samme langrennsski (tupp og bakende/målelapp).
-Trekk ut data til ren JSON:
+Dette er bilder av samme langrennsski (f.eks tupp med fabrikat, og bakski med modell, lengde og målelapp).
+Kombiner informasjonen fra bildene til ett felles JSON-objekt:
 - brand: Merke (f.eks "Kästle", "Atomic", "Fischer", "Madshus", "Rossignol", "Salomon").
 - model: Modellnavn (f.eks "RX 10 2.0", "Redster C9 Skintec", "Speedmax 3D Skate").
 - type: "Klassisk", "Skate" eller "Felleski" (hvis Skintec/R-Skin -> "Felleski").
@@ -42,7 +73,7 @@ Trekk ut data til ren JSON:
 - pocketFront: Smørelomme foran nullpunkt i cm som tall (f.eks 37.4). Ellers null.
 - pocketRear: Smørelomme bak nullpunkt i cm som tall (f.eks 26.7 eller 16). Ellers null.
 
-Returner KUN gyldig JSON uten markdown eller backticks:
+Returner KUN ren JSON uten markdown eller backticks:
 {
   "brand": "string",
   "model": "string",
@@ -69,11 +100,11 @@ Returner KUN gyldig JSON uten markdown eller backticks:
       });
     });
 
-    const candidateModels = ['gemini-2.5-flash', 'gemini-3.8-flash'];
     let lastError = null;
     let result = null;
 
-    for (const model of candidateModels) {
+    // Prøv modellene i rekkefølge til én svarer med 200 OK
+    for (const model of modelsToTry) {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
       try {
@@ -93,8 +124,9 @@ Returner KUN gyldig JSON uten markdown eller backticks:
 
         const errText = await response.text();
         lastError = `${model} feilet (${response.status}): ${errText}`;
-      } catch (fErr) {
-        lastError = fErr.message;
+        // Hvis modellen er 503 (opptatt) eller 404 (finnes ikke), går løkken umiddelbart til neste modell!
+      } catch (err) {
+        lastError = err.message;
       }
     }
 
