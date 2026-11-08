@@ -49,6 +49,7 @@ const INITIAL_SKIS = [
     fbw: null,
     stravaKm: 142.5,
     thumbnailUrl: null,
+    receiptUrl: null,
     notes: "Nydelig glid på -2 til -7 med faste spor. Eksempel på birkenski.",
     maintenanceLog: [
       { date: "2025-01-15", title: "Mettet med Swix Marathon", type: "Glid" }
@@ -77,6 +78,7 @@ const INITIAL_SKIS = [
     pocketRearCm: 16,
     stravaKm: 88.0,
     thumbnailUrl: null,
+    receiptUrl: null,
     notes: "Eksempel på tørrvoksski. Null subb i staking og lett å tråkke ned.",
     maintenanceLog: [
       { date: "2025-02-02", title: "Rode B17 + Swix VP45", type: "Feste" }
@@ -105,6 +107,7 @@ const INITIAL_SKIS = [
     pocketRearCm: 10,
     stravaKm: 34.2,
     thumbnailUrl: null,
+    receiptUrl: null,
     notes: "Eksempel på felleski for Junior. Lett å tråkke ned for sikkert feste.",
     maintenanceLog: [
       { date: "2025-01-10", title: "Renset og impregnert fell", type: "Fell" }
@@ -224,7 +227,6 @@ function getWaxAdvice(temp, humidity, skiType) {
   }
 }
 
-// Skalerer ned store mobilbilder før sending til API
 function compressImage(file, maxWidth = 1600, maxHeight = 1600, quality = 0.85) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -278,10 +280,14 @@ export default function Home() {
   // Hjelpe-modal state
   const [showHelpModal, setShowHelpModal] = useState(false);
 
-  // Overdragelse / Salg modal state
+  // Skikort / Salg modal state
   const [transferModalSki, setTransferModalSki] = useState(null);
   const [showImportPassportModal, setShowImportPassportModal] = useState(false);
   const [passportInputText, setPassportInputText] = useState("");
+
+  // Kvittering modal state
+  const [viewingReceiptUrl, setViewingReceiptUrl] = useState(null);
+  const receiptFileInputRef = useRef(null);
 
   // Familiemedlemmer state
   const [members, setMembers] = useState(INITIAL_MEMBERS);
@@ -298,7 +304,7 @@ export default function Home() {
 
   // Søk & Sortering state
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("number"); // "number", "match", "brand", "km"
+  const [sortBy, setSortBy] = useState("number");
 
   // Yr Steder
   const [spots, setSpots] = useState(DEFAULT_SPOTS);
@@ -611,12 +617,12 @@ export default function Home() {
     alert(`✓ Skiparet er nå flyttet til stallen til ${targetName}!`);
   };
 
-  // IMPORT AV DIGITALT VOGNKORT (EKSTERNT SALG/OVERDRAGELSE)
+  // IMPORT AV DIGITALT SKIKORT (EKSTERNT SALG/OVERDRAGELSE)
   const handleImportPassport = (jsonString) => {
     try {
       const data = JSON.parse(jsonString.trim());
       if (!data.brand || !data.model) {
-        alert("Ugyldig vognkort-format. Fant ikke merke eller modell.");
+        alert("Ugyldig skikort-format. Fant ikke merke eller modell.");
         return;
       }
 
@@ -643,9 +649,10 @@ export default function Home() {
         pocketRearCm: data.pocketRearCm || null,
         stravaKm: data.stravaKm || 0,
         thumbnailUrl: data.thumbnailUrl || null,
+        receiptUrl: data.receiptUrl || null,
         notes: `Overtatt/kjøpt. ${data.notes || ''}`.trim(),
         maintenanceLog: [
-          { date: new Date().toISOString().split("T")[0], title: "Importert via digitalt vognkort", type: "Overtakelse" },
+          { date: new Date().toISOString().split("T")[0], title: "Importert via digitalt skikort", type: "Overtakelse" },
           ...(data.maintenanceLog || [])
         ]
       };
@@ -655,7 +662,30 @@ export default function Home() {
       setPassportInputText("");
       alert(`✓ Gratulerer! ${importedSki.brand} ${importedSki.model} er nå lagt inn i din skipark med all historikk.`);
     } catch (err) {
-      alert("Klarte ikke å lese vognkort-koden. Sjekk at hele koden er kopiert riktig.");
+      alert("Klarte ikke å lese skikort-koden. Sjekk at hele koden er kopiert riktig.");
+    }
+  };
+
+  // LAST OPP OG LAGRE KVITTERING PÅ AKTIVT SKIPAR
+  const handleUploadReceipt = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeSki) return;
+
+    try {
+      const { previewUrl } = await compressImage(file, 2000, 2000, 0.9);
+      const updated = skis.map(s => s.id === activeSki.id ? {
+        ...s,
+        receiptUrl: previewUrl,
+        maintenanceLog: [
+          { date: new Date().toISOString().split("T")[0], title: "Kvittering / Kjøpsbevis lagt til", type: "Dokument" },
+          ...(s.maintenanceLog || [])
+        ]
+      } : s);
+
+      persistSkis(updated);
+      alert("✓ Kvittering lagret på dette skiparet!");
+    } catch (err) {
+      alert(`Klarte ikke å lagre kvittering: ${err.message}`);
     }
   };
 
@@ -688,7 +718,7 @@ export default function Home() {
     persistSkis(updated);
   };
 
-  // FLERBILDE-HÅNDTERING VED REGISTRERING
+  // FLERBILDE-HÅNDTERING VED REGISTRERING (MED RESILIENT KOMPRIMERING OG FEILHÅNDTERING)
   const handleMultipleImageSelection = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -1229,31 +1259,31 @@ export default function Home() {
 
               <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
                 <div style={{ fontSize: '15px', fontWeight: '800', color: '#7c3aed', marginBottom: '6px' }}>
-                  🔄 4. Arv og Salg (Digitalt Vognkort)
+                  🔄 4. Arv og Salg (Digitalt Skikort)
                 </div>
                 <div style={{ fontSize: '13px', color: '#475569', lineHeight: '1.5' }}>
-                  Flytt ski internt i familien når lillebror arver, eller eksporter et digitalt vognkort når du selger skiene videre!
+                  Flytt ski internt i familien når lillebror arver, eller eksporter et digitalt skikort og kvittering når du selger skiene videre!
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* MODAL FOR DIGITALT VOGNKORT (EKSPORT VED SALG / DELING) */}
+        {/* MODAL FOR DIGITALT SKIKORT (EKSPORT VED SALG / OVERDRAGELSE) */}
         {transferModalSki && (
           <div style={{ background: '#ffffff', border: '2px solid #7c3aed', borderRadius: '20px', padding: '24px', marginTop: '16px', boxShadow: '0 12px 30px rgba(124, 58, 237, 0.15)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span style={{ fontSize: '26px' }}>📤</span>
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#5b21b6' }}>
-                  Digitalt Vognkort: {transferModalSki.brand} {transferModalSki.model}
+                  Digitalt Skikort: {transferModalSki.brand} {transferModalSki.model}
                 </h3>
               </div>
               <button onClick={() => setTransferModalSki(null)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#5b21b6', fontWeight: 'bold' }}>✕</button>
             </div>
 
             <p style={{ margin: '0 0 14px 0', fontSize: '14px', color: '#4c1d95', lineHeight: '1.5' }}>
-              Kopier koden under og send den til kjøperen på Finn, SMS eller e-post. Kjøperen trykker <strong>«Motta ski via vognkort»</strong> i sin SkiPark Pro for å importere paret med alle måletall og slip.
+              Kopier koden under og send den til kjøperen på Finn, SMS eller e-post. Kjøperen trykker <strong>«Motta ski via skikort»</strong> i sin SkiPark Pro for å importere paret med alle måletall, slip og kvittering.
             </p>
 
             <textarea
@@ -1267,11 +1297,11 @@ export default function Home() {
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(JSON.stringify(transferModalSki));
-                  alert("✓ Vognkort-koden er kopiert til utklippstavlen! Send den til kjøperen.");
+                  alert("✓ Skikort-koden er kopiert til utklippstavlen! Send den til kjøperen.");
                 }}
                 style={{ background: '#7c3aed', color: '#ffffff', border: 'none', padding: '10px 18px', borderRadius: '10px', fontWeight: '800', fontSize: '13px', cursor: 'pointer' }}
               >
-                📋 Kopier vognkort
+                📋 Kopier skikort
               </button>
 
               <button
@@ -1289,25 +1319,25 @@ export default function Home() {
           </div>
         )}
 
-        {/* MODAL FOR IMPORT AV DIGITALT VOGNKORT */}
+        {/* MODAL FOR IMPORT AV DIGITALT SKIKORT */}
         {showImportPassportModal && (
           <div style={{ background: '#ffffff', border: '2px solid #059669', borderRadius: '20px', padding: '24px', marginTop: '16px', boxShadow: '0 12px 30px rgba(5, 150, 105, 0.15)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span style={{ fontSize: '26px' }}>📥</span>
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#065f46' }}>
-                  Importer ski via Digitalt Vognkort
+                  Importer ski via Digitalt Skikort
                 </h3>
               </div>
               <button onClick={() => setShowImportPassportModal(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#065f46', fontWeight: 'bold' }}>✕</button>
             </div>
 
             <p style={{ margin: '0 0 14px 0', fontSize: '14px', color: '#047857' }}>
-              Har du kjøpt eller arvet et par ski fra noen som bruker SkiPark Pro? Lim inn vognkort-koden her:
+              Har du kjøpt eller arvet et par ski fra noen som bruker SkiPark Pro? Lim inn skikort-koden her:
             </p>
 
             <textarea
-              placeholder="Lim inn vognkort-koden her..."
+              placeholder="Lim inn skikort-koden her..."
               value={passportInputText}
               onChange={(e) => setPassportInputText(e.target.value)}
               rows="5"
@@ -1321,6 +1351,21 @@ export default function Home() {
               >
                 ✓ Importer til {currentMember.name}
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL FOR FORHÅNDSVISNING AV KVITTERING I FULL STØRRELSE */}
+        {viewingReceiptUrl && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+            <div style={{ maxWidth: '640px', width: '100%', background: '#ffffff', borderRadius: '18px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0' }}>
+                <span style={{ fontWeight: '800', color: '#0f172a' }}>🧾 Lagret Kvittering / Kjøpsbevis</span>
+                <button onClick={() => setViewingReceiptUrl(null)} style={{ background: 'none', border: 'none', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer' }}>✕</button>
+              </div>
+              <div style={{ padding: '16px', display: 'flex', justifyContent: 'center', maxHeight: '75vh', overflowY: 'auto' }}>
+                <img src={viewingReceiptUrl} alt="Kvittering" style={{ maxWidth: '100%', height: 'auto', borderRadius: '10px' }} />
+              </div>
             </div>
           </div>
         )}
@@ -1644,7 +1689,7 @@ export default function Home() {
           ))}
         </nav>
 
-        {/* 1. SKIPARK MED SØK, SORTERING OG VOGNKORT-IMPORT */}
+        {/* 1. SKIPARK MED SØK, SORTERING OG SKIKORT-IMPORT */}
         {(view === "park" || view === "recommender") && (
           <div>
             <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: '14px 18px', borderRadius: '16px', marginBottom: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
@@ -1673,7 +1718,7 @@ export default function Home() {
                   style={{ background: '#f0fdf4', border: '1px solid #86efac', color: '#059669', borderRadius: '8px', padding: '6px 12px', fontSize: '13px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                 >
                   <span>📥</span>
-                  <span>Motta ski via vognkort</span>
+                  <span>Motta ski via skikort</span>
                 </button>
               </div>
 
@@ -1785,7 +1830,10 @@ export default function Home() {
                             <div style={{ fontSize: '12px', color: '#475569', lineHeight: '1.5' }}>
                               <div>Føre: <strong style={{ color: '#0284c7' }}>{ski.tempOptimalMin}° til {ski.tempOptimalMax}°C</strong></div>
                               <div>Slip: <strong>{ski.grind || 'Standard'}</strong> • Vekt: <strong>{ski.weightKgMin}-{ski.weightKgMax} kg</strong></div>
-                              <div>Strava: <strong style={{ color: '#ea580c' }}>{ski.stravaKm || 0} km</strong></div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span>Strava: <strong style={{ color: '#ea580c' }}>{ski.stravaKm || 0} km</strong></span>
+                                {ski.receiptUrl && <span title="Kvittering er lagret" style={{ fontSize: '13px' }}>🧾</span>}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1805,7 +1853,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* 2. DETALJVISNING MED OVERFØRING (FAMILIE/SALG) OG KALIBRERING */}
+        {/* 2. DETALJVISNING MED OVERFØRING, KVITTERING OG KALIBRERING */}
         {view === "detail" && activeSki && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
@@ -1822,6 +1870,14 @@ export default function Home() {
                   accept="image/*"
                   ref={skiselectorFileInputRef}
                   onChange={handleUpdateSkiWithSkiselector}
+                  style={{ display: 'none' }}
+                />
+
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={receiptFileInputRef}
+                  onChange={handleUploadReceipt}
                   style={{ display: 'none' }}
                 />
 
@@ -1846,7 +1902,7 @@ export default function Home() {
                   style={{ background: '#f5f3ff', border: '1.5px solid #7c3aed', color: '#6d28d9', padding: '8px 14px', borderRadius: '10px', fontSize: '13px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
                   <span>📤</span>
-                  <span>Overfør / Selg</span>
+                  <span>Skikort (Salg/Del)</span>
                 </button>
 
                 <button
@@ -2045,8 +2101,46 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Notater og Logg */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+            {/* KORT FOR KVITTERING, NOTATER OG SMØRELOGG */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+              
+              {/* KVITTERING & KJØPSBEVIS */}
+              <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>🧾 Kvittering / Kjøpsbevis</h4>
+                  <button
+                    onClick={() => receiptFileInputRef.current?.click()}
+                    style={{ background: '#f8fafc', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', color: '#0284c7' }}
+                  >
+                    {activeSki.receiptUrl ? "Bytt bilde" : "+ Last opp"}
+                  </button>
+                </div>
+
+                {activeSki.receiptUrl ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div 
+                      onClick={() => setViewingReceiptUrl(activeSki.receiptUrl)} 
+                      style={{ cursor: 'pointer', position: 'relative', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0', maxHeight: '140px', background: '#000', display: 'flex', justifyContent: 'center' }}
+                    >
+                      <img src={activeSki.receiptUrl} alt="Kvittering miniatyr" style={{ maxHeight: '140px', width: 'auto', objectFit: 'contain' }} />
+                      <div style={{ position: 'absolute', bottom: '6px', right: '6px', background: 'rgba(0,0,0,0.7)', color: '#fff', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>
+                        🔍 Forstørr
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div 
+                    onClick={() => receiptFileInputRef.current?.click()}
+                    style={{ border: '2px dashed #cbd5e1', borderRadius: '12px', padding: '24px 16px', textAlign: 'center', cursor: 'pointer', background: '#f8fafc' }}
+                  >
+                    <div style={{ fontSize: '24px', marginBottom: '4px' }}>📄</div>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#64748b' }}>Ta bilde av kvitteringen</div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>Gull verdt ved garanti, forsikring eller salg</div>
+                  </div>
+                )}
+              </div>
+
+              {/* FØRENOTATER */}
               <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
                 <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: '800' }}>📝 Erfaringer & Førenotater</h4>
                 <textarea
@@ -2058,6 +2152,7 @@ export default function Home() {
                 />
               </div>
 
+              {/* SMØRE- OG ØKTLOGG */}
               <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
                 <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: '800' }}>🔧 Smøre- og øktlogg</h4>
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
@@ -2081,7 +2176,7 @@ export default function Home() {
                     }}
                     style={{ background: '#0284c7', border: 'none', color: '#ffffff', fontWeight: '700', padding: '10px 18px', borderRadius: '10px', cursor: 'pointer', fontSize: '14px' }}
                   >
-                    + Loggfør
+                    + Logg
                   </button>
                 </div>
 
@@ -2094,6 +2189,7 @@ export default function Home() {
                   ))}
                 </div>
               </div>
+
             </div>
           </div>
         )}
@@ -2152,7 +2248,7 @@ export default function Home() {
                 {isRegisterAnalyzing ? (
                   <span style={{ color: '#0284c7', fontWeight: '600' }}>Vennligst vent noen sekunder mens AI leser av detaljene...</span>
                 ) : (
-                  "Tips: Velg både tuppen med merke og bakenden med spenn/vekt[cite: 2, 3]. AI slår alt sammen automatisk!"
+                  "Tips: Velg både tuppen med merke og bakenden med spenn/vekt. AI slår alt sammen automatisk!"
                 )}
               </div>
             </div>
@@ -2213,6 +2309,7 @@ export default function Home() {
                 pocketRearCm: newSkiData.pocketRearCm ? parseFloat(newSkiData.pocketRearCm) : null,
                 stravaKm: 0,
                 thumbnailUrl: firstImageThumbnail,
+                receiptUrl: null,
                 notes: newSkiData.notes,
                 maintenanceLog: []
               });
@@ -2309,7 +2406,7 @@ export default function Home() {
                     type="number"
                     value={newSkiData.weightKgMin}
                     onChange={(e) => setNewSkiData({ ...newSkiData, weightKgMin: e.target.value })}
-                    style={{ width: '100%', background: '#ffffff', border: '1.5px solid #cbd5e1', color: '#0f172a', padding: '10px', borderRadius: '10px', boxSizing: 'border-box' }}
+                    style={{ width: '100%', background: '#ffffff', border: '1.5px solid #cbd5e1', color: '#0f172a', padding: '10px', borderRadius: '10px', fontSize: '14px', boxSizing: 'border-box' }}
                   />
                 </div>
                 <div>
@@ -2318,7 +2415,7 @@ export default function Home() {
                     type="number"
                     value={newSkiData.weightKgMax}
                     onChange={(e) => setNewSkiData({ ...newSkiData, weightKgMax: e.target.value })}
-                    style={{ width: '100%', background: '#ffffff', border: '1.5px solid #cbd5e1', color: '#0f172a', padding: '10px', borderRadius: '10px', boxSizing: 'border-box' }}
+                    style={{ width: '100%', background: '#ffffff', border: '1.5px solid #cbd5e1', color: '#0f172a', padding: '10px', borderRadius: '10px', fontSize: '14px', boxSizing: 'border-box' }}
                   />
                 </div>
                 <div>
@@ -2332,7 +2429,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* SPENNTALL */}
+              {/* SPENNTALL FRA AI-AVLESNING */}
               <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                 <div style={{ fontSize: '12px', fontWeight: '800', color: '#475569', marginBottom: '8px' }}>
                   MÅLEVERDIER FRA LAPP / SKI (HVIS SYNLIG)
