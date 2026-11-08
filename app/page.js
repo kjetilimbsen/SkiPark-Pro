@@ -227,7 +227,8 @@ function getWaxAdvice(temp, humidity, skiType) {
   }
 }
 
-function compressImage(file, maxWidth = 1600, maxHeight = 1600, quality = 0.85) {
+// Skalerer ned store mobilbilder til maks 1000px for lynrask opplasting og analyse
+function compressImage(file, maxWidth = 1000, maxHeight = 1000, quality = 0.75) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -672,7 +673,7 @@ export default function Home() {
     if (!file || !activeSki) return;
 
     try {
-      const { previewUrl } = await compressImage(file, 2000, 2000, 0.9);
+      const { previewUrl } = await compressImage(file, 1600, 1600, 0.85);
       const updated = skis.map(s => s.id === activeSki.id ? {
         ...s,
         receiptUrl: previewUrl,
@@ -718,7 +719,7 @@ export default function Home() {
     persistSkis(updated);
   };
 
-  // FLERBILDE-HÅNDTERING VED REGISTRERING (MED RESILIENT KOMPRIMERING OG FEILHÅNDTERING)
+  // FLERBILDE-HÅNDTERING VED REGISTRERING
   const handleMultipleImageSelection = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -730,7 +731,7 @@ export default function Home() {
     try {
       const compressedList = [];
       for (const file of files) {
-        const compressed = await compressImage(file);
+        const compressed = await compressImage(file, 1000, 1000, 0.75);
         compressedList.push(compressed);
       }
 
@@ -740,7 +741,7 @@ export default function Home() {
       setAnalyzingStatus(`2/2 Gemini AI leser ${updatedImages.length} bilde(r)...`);
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000);
+      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 sekunder timeout
 
       const res = await fetch('/api/analyze-skiselector', {
         method: 'POST',
@@ -804,7 +805,7 @@ export default function Home() {
     setSkiselectorError("");
 
     try {
-      const { base64, mimeType } = await compressImage(file);
+      const { base64, mimeType } = await compressImage(file, 1000, 1000, 0.75);
 
       const res = await fetch('/api/analyze-skiselector', {
         method: 'POST',
@@ -1114,7 +1115,6 @@ export default function Home() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            {/* ❓ HJELPE-KNAPP */}
             <button
               onClick={() => setShowHelpModal(true)}
               style={{
@@ -2248,7 +2248,7 @@ export default function Home() {
                 {isRegisterAnalyzing ? (
                   <span style={{ color: '#0284c7', fontWeight: '600' }}>Vennligst vent noen sekunder mens AI leser av detaljene...</span>
                 ) : (
-                  "Tips: Velg både tuppen med merke og bakenden med spenn/vekt. AI slår alt sammen automatisk!"
+                  "Tips: Velg både tuppen med merke og bakenden med spenn/vekt[cite: 2, 3]. AI slår alt sammen automatisk!"
                 )}
               </div>
             </div>
@@ -2406,7 +2406,7 @@ export default function Home() {
                     type="number"
                     value={newSkiData.weightKgMin}
                     onChange={(e) => setNewSkiData({ ...newSkiData, weightKgMin: e.target.value })}
-                    style={{ width: '100%', background: '#ffffff', border: '1.5px solid #cbd5e1', color: '#0f172a', padding: '10px', borderRadius: '10px', fontSize: '14px', boxSizing: 'border-box' }}
+                    style={{ width: '100%', background: '#ffffff', border: '1.5px solid #cbd5e1', color: '#0f172a', padding: '10px', borderRadius: '10px', boxSizing: 'border-box', fontSize: '14px' }}
                   />
                 </div>
                 <div>
@@ -2415,7 +2415,7 @@ export default function Home() {
                     type="number"
                     value={newSkiData.weightKgMax}
                     onChange={(e) => setNewSkiData({ ...newSkiData, weightKgMax: e.target.value })}
-                    style={{ width: '100%', background: '#ffffff', border: '1.5px solid #cbd5e1', color: '#0f172a', padding: '10px', borderRadius: '10px', fontSize: '14px', boxSizing: 'border-box' }}
+                    style={{ width: '100%', background: '#ffffff', border: '1.5px solid #cbd5e1', color: '#0f172a', padding: '10px', borderRadius: '10px', boxSizing: 'border-box', fontSize: '14px' }}
                   />
                 </div>
                 <div>
@@ -2429,7 +2429,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* SPENNTALL FRA AI-AVLESNING */}
+              {/* SPENNTALL */}
               <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                 <div style={{ fontSize: '12px', fontWeight: '800', color: '#475569', marginBottom: '8px' }}>
                   MÅLEVERDIER FRA LAPP / SKI (HVIS SYNLIG)
