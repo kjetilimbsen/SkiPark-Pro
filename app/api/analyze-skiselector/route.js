@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 
+export const maxDuration = 45;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export async function POST(req) {
   try {
     const rawKey = process.env.GEMINI_API_KEY;
@@ -40,7 +44,7 @@ Kombiner informasjonen fra bildene til ett felles JSON-objekt:
 - pocketFront: Smørelomme foran nullpunkt i cm som tall (f.eks 37.4). Ellers null.
 - pocketRear: Smørelomme bak nullpunkt i cm som tall (f.eks 26.7 eller 16). Ellers null.
 
-Returner KUN ren JSON uten markdown eller backticks:
+Returner KUN gyldig JSON uten markdown eller backticks:
 {
   "brand": "string",
   "model": "string",
@@ -67,21 +71,40 @@ Returner KUN ren JSON uten markdown eller backticks:
       });
     });
 
-    // Kall gemini-2.5-flash direkte uten listModels eller venteløkker
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const model = 'gemini-3.8-flash';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey
-      },
-      body: JSON.stringify({ contents: [{ parts }] })
-    });
+    let response = null;
+    let errText = '';
 
-    if (!response.ok) {
-      const errText = await response.text();
-      return NextResponse.json({ error: `Gemini feilet (${response.status}): ${errText}` }, { status: response.status });
+    // Gjør inntil 3 forsøk dersom Google har en midlertidig 503-topp
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey
+          },
+          body: JSON.stringify({ contents: [{ parts }] })
+        });
+
+        if (response.ok) break;
+
+        errText = await response.text();
+        if (response.status === 503 || response.status === 429) {
+          await sleep(1200 * attempt);
+          continue;
+        }
+        break;
+      } catch (fErr) {
+        errText = fErr.message;
+        await sleep(1000);
+      }
+    }
+
+    if (!response || !response.ok) {
+      return NextResponse.json({ error: `Gemini feilet (${response?.status}): ${errText}` }, { status: response ? response.status : 500 });
     }
 
     const result = await response.json();
