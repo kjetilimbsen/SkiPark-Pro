@@ -226,14 +226,14 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // E-post auth state
+  // Auth states
   const [authMode, setAuthMode] = useState("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authMessage, setAuthMessage] = useState({ text: "", type: "" });
   const [authLoading, setAuthLoading] = useState(false);
 
-  // Strava state (Metode 1)
+  // Strava state
   const [stravaConnected, setStravaConnected] = useState(false);
   const [showStravaModal, setShowStravaModal] = useState(false);
   const [unassignedActivities, setUnassignedActivities] = useState([]);
@@ -262,12 +262,35 @@ export default function Home() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
 
-  // Kamera-states for Skiselector (Gemini AI)
-  const [capturedImage, setCapturedImage] = useState(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analyzedSkiData, setAnalyzedSkiData] = useState(null);
-  const [aiError, setAiError] = useState("");
-  const fileInputRef = useRef(null);
+  // Skjema-states for Ny Ski (Controlled fields slik at AI fyller inn direkte)
+  const [newSkiData, setNewSkiData] = useState({
+    brand: "Fischer",
+    model: "",
+    type: "Klassisk",
+    tag: "",
+    camberType: "Universal",
+    lengthCm: 197,
+    weightKgMin: 70,
+    weightKgMax: 80,
+    tempOptimalMin: -10,
+    tempOptimalMax: -2,
+    grind: "Standard",
+    hbw: "",
+    fbw: "",
+    pocketFrontCm: "",
+    pocketRearCm: "",
+    notes: ""
+  });
+
+  const [registerImage, setRegisterImage] = useState(null);
+  const [isRegisterAnalyzing, setIsRegisterAnalyzing] = useState(false);
+  const [registerAiError, setRegisterAiError] = useState("");
+  const registerFileInputRef = useRef(null);
+
+  // Skiselector-oppdatering på aktiv ski
+  const [isSkiselectorUpdating, setIsSkiselectorUpdating] = useState(false);
+  const [skiselectorError, setSkiselectorError] = useState("");
+  const skiselectorFileInputRef = useRef(null);
 
   // QR-scanner states
   const [qrManualInput, setQrManualInput] = useState("");
@@ -413,7 +436,7 @@ export default function Home() {
       }
       setDeferredPrompt(null);
     } else {
-      alert("For å legge til på hjemskjermen:\n\n• På iPhone/iPad: Trykk på Del-ikonet nederst i Safari og velg «Legg til på Hjem-skjerm» 📲\n• På Android/Chrome: Trykk på de tre prikkene øverst til høyre og velg «Installer app» eller «Legg til på startskjerm».");
+      alert("For å legge til på hjemskjermen:\n\n• På iPhone/iPad: Trykk på Del-ikonet nederst i Safari og velg «Legg til på Hjem-skjerm» 📲\n• På Android/Chrome: Trykk på de tre prikkene øverst til høyre og velg «Installer app».");
     }
   };
 
@@ -480,11 +503,31 @@ export default function Home() {
     await supabase.auth.signOut();
   };
 
-  const handleAddSki = (newSki) => {
-    const updated = [newSki, ...skis];
+  const handleAddSki = (skiToSave) => {
+    const updated = [skiToSave, ...skis];
     persistSkis(updated);
-    setSelectedSkiId(newSki.id);
+    setSelectedSkiId(skiToSave.id);
     setView("detail");
+    // Nullstill bilderegistrering
+    setRegisterImage(null);
+    setNewSkiData({
+      brand: "Fischer",
+      model: "",
+      type: "Klassisk",
+      tag: "",
+      camberType: "Universal",
+      lengthCm: 197,
+      weightKgMin: currentMember.weightKg - 5,
+      weightKgMax: currentMember.weightKg + 5,
+      tempOptimalMin: -10,
+      tempOptimalMax: -2,
+      grind: "Standard",
+      hbw: "",
+      fbw: "",
+      pocketFrontCm: "",
+      pocketRearCm: "",
+      notes: ""
+    });
   };
 
   const handleDeleteSki = (id, skiName) => {
@@ -522,15 +565,14 @@ export default function Home() {
     persistSkis(updated);
   };
 
-  // GEMINI AI BILDEANALYSE AV SKISELECTOR
-  const handleImageCapture = async (e) => {
+  // AI-ANALYSE AV SKI / KLISTREMERKE VED REGISTRERING
+  const handleRegisterImageCapture = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setCapturedImage(URL.createObjectURL(file));
-    setIsAnalyzing(true);
-    setAiError("");
-    setAnalyzedSkiData(null);
+    setRegisterImage(URL.createObjectURL(file));
+    setIsRegisterAnalyzing(true);
+    setRegisterAiError("");
 
     try {
       const reader = new FileReader();
@@ -548,29 +590,102 @@ export default function Home() {
 
           const json = await res.json();
           if (!res.ok) {
-            setAiError(json.error || `Serverfeil: ${res.status} ${res.statusText}`);
-            setIsAnalyzing(false);
+            setRegisterAiError(json.error || `Serverfeil: ${res.status}`);
+            setIsRegisterAnalyzing(false);
             return;
           }
 
-          if (json.data && (json.data.hbw || json.data.brand || json.data.model)) {
-            setAnalyzedSkiData(json.data);
-          } else {
-            setAiError("Fant ingen Skiselector-verdier i bildet. Kontroller at bildet viser tallene tydelig.");
-          }
-          setIsAnalyzing(false);
+          const d = json.data || {};
+          // Oppdater skjemafeltene direkte med AI-tall
+          setNewSkiData(prev => ({
+            ...prev,
+            brand: d.brand && d.brand !== "Ukjent" ? d.brand : prev.brand,
+            model: d.model || prev.model,
+            type: d.type || prev.type,
+            tag: d.model ? `#${d.model.toLowerCase().replace(/[^a-z0-9]/g, '')}` : prev.tag,
+            lengthCm: d.lengthCm ? Number(d.lengthCm) : prev.lengthCm,
+            camberType: d.camberType || prev.camberType,
+            grind: d.grind || prev.grind,
+            weightKgMin: d.weightMin ? Number(d.weightMin) : prev.weightKgMin,
+            weightKgMax: d.weightMax ? Number(d.weightMax) : prev.weightKgMax,
+            hbw: d.hbw !== null && d.hbw !== undefined ? String(d.hbw) : prev.hbw,
+            fbw: d.fbw !== null && d.fbw !== undefined ? String(d.fbw) : prev.fbw,
+            pocketFrontCm: d.pocketFront !== null && d.pocketFront !== undefined ? String(d.pocketFront) : prev.pocketFrontCm,
+            pocketRearCm: d.pocketRear !== null && d.pocketRear !== undefined ? String(d.pocketRear) : prev.pocketRearCm,
+            notes: "Registrert via AI-bildegjenkjenning av ski/klistrelapp."
+          }));
+
+          setIsRegisterAnalyzing(false);
         } catch (fetchErr) {
-          setAiError(`Nettverksfeil mot /api/analyze-skiselector: ${fetchErr.message}`);
-          setIsAnalyzing(false);
+          setRegisterAiError(`Nettverksfeil: ${fetchErr.message}`);
+          setIsRegisterAnalyzing(false);
         }
       };
     } catch (err) {
-      setAiError(`Klarte ikke å lese bildefilen: ${err.message}`);
-      setIsAnalyzing(false);
+      setRegisterAiError(`Klarte ikke å lese bildefilen: ${err.message}`);
+      setIsRegisterAnalyzing(false);
     }
   };
 
-  // STRAVA METODE 1: HASHTAG-MATCHING
+  // AI-ANALYSE AV SKISELECTOR PÅ ET EKSISTERENDE PAR
+  const handleUpdateSkiWithSkiselector = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeSki) return;
+
+    setIsSkiselectorUpdating(true);
+    setSkiselectorError("");
+
+    try {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onloadend = async () => {
+        const base64data = reader.result.split(',')[1];
+        const mimeType = file.type || 'image/jpeg';
+
+        try {
+          const res = await fetch('/api/analyze-skiselector', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageBase64: base64data, mimeType })
+          });
+
+          const json = await res.json();
+          if (!res.ok) {
+            setSkiselectorError(json.error || `Feil: ${res.status}`);
+            setIsSkiselectorUpdating(false);
+            return;
+          }
+
+          const d = json.data || {};
+          const updated = skis.map(s => s.id === activeSki.id ? {
+            ...s,
+            hbw: d.hbw !== null && d.hbw !== undefined ? Number(d.hbw) : s.hbw,
+            fbw: d.fbw !== null && d.fbw !== undefined ? Number(d.fbw) : s.fbw,
+            pocketFrontCm: d.pocketFront !== null && d.pocketFront !== undefined ? Number(d.pocketFront) : s.pocketFrontCm,
+            pocketRearCm: d.pocketRear !== null && d.pocketRear !== undefined ? Number(d.pocketRear) : s.pocketRearCm,
+            weightKgMin: d.weightMin ? Number(d.weightMin) : s.weightKgMin,
+            weightKgMax: d.weightMax ? Number(d.weightMax) : s.weightKgMax,
+            grind: d.grind || s.grind,
+            maintenanceLog: [
+              { date: new Date().toISOString().split("T")[0], title: `Skiselector kalibrering: HBW ${d.hbw || '-'} mm, FBW ${d.fbw || '-'} mm`, type: "Måling" },
+              ...(s.maintenanceLog || [])
+            ]
+          } : s);
+
+          persistSkis(updated);
+          setIsSkiselectorUpdating(false);
+          alert(`✓ Skiselector-data oppdatert for ${activeSki.brand} ${activeSki.model}!`);
+        } catch (fetchErr) {
+          setSkiselectorError(`Feil: ${fetchErr.message}`);
+          setIsSkiselectorUpdating(false);
+        }
+      };
+    } catch (err) {
+      setSkiselectorError(`Klarte ikke å lese bilde: ${err.message}`);
+      setIsSkiselectorUpdating(false);
+    }
+  };
+
   const handleSyncStravaActivities = () => {
     const incomingActivities = [
       { id: "act-1", title: "Kveldstur Sjusjøen #speedmax", distanceKm: 24.5, date: "I dag" },
@@ -603,7 +718,7 @@ export default function Home() {
 
     persistSkis(tempSkis);
     setUnassignedActivities(unassigned);
-    alert(`✓ Strava synkronisert!\n${matchedCount} økter matchet automatisk via hashtag (#).\n${unassigned.length} økt manglet hashtag og kan tildeles manuelt under.`);
+    alert(`✓ Strava synkronisert!\n${matchedCount} økter matchet via hashtag (#).\n${unassigned.length} økt manglet hashtag og kan tildeles manuelt under.`);
   };
 
   const handleAssignActivity = (act, targetSkiId) => {
@@ -661,7 +776,7 @@ export default function Home() {
     );
   }
 
-  // Velkomstskjerm hvis ikke logget inn
+  // Velkomstskjerm
   if (!user) {
     return (
       <div style={{ minHeight: '100vh', background: 'linear-gradient(180deg, #f0f7ff 0%, #ffffff 100%)', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', fontFamily: 'system-ui, sans-serif' }}>
@@ -673,7 +788,7 @@ export default function Home() {
             SkiPark <span style={{ color: '#0284c7' }}>Pro</span>
           </h1>
           <p style={{ fontSize: '14px', color: '#475569', marginBottom: '28px', lineHeight: '1.5' }}>
-            Profesjonell skipark-administrasjon, live Yr-førevelger, smøretips og Skiselector AI-avlesning.
+            Profesjonell skipark-administrasjon, live Yr-førevelger, smøretips og AI-bildegjenkjenning av ski.
           </p>
 
           <button
@@ -808,7 +923,7 @@ export default function Home() {
     <div style={{ minHeight: '100vh', background: '#f8fafc', color: '#0f172a', padding: '24px 20px', fontFamily: 'system-ui, -apple-system, sans-serif', boxSizing: 'border-box' }}>
       <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
 
-        {/* TOPPLINJE MED FAMILIEVELGER OG STRAVA */}
+        {/* TOPPLINJE */}
         <header style={{ background: '#ffffff', borderRadius: '20px', padding: '16px 24px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <RacingSkiLogo size={46} />
@@ -895,7 +1010,7 @@ export default function Home() {
           </div>
         </header>
 
-        {/* DIALOG FOR NYTT FAMILIEMEDLEM / LØPER */}
+        {/* DIALOG FOR NYTT FAMILIEMEDLEM */}
         {showAddMember && (
           <div style={{ background: '#eff6ff', border: '1.5px solid #93c5fd', borderRadius: '18px', padding: '20px 24px', marginTop: '16px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.06)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -970,7 +1085,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* STRAVA MODAL (METODE 1) */}
+        {/* STRAVA METODE 1 MODAL */}
         {showStravaModal && (
           <div style={{ background: '#fff7ed', border: '2px solid #fc4c02', borderRadius: '18px', padding: '24px', marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -984,7 +1099,7 @@ export default function Home() {
             </div>
 
             <p style={{ margin: 0, fontSize: '14px', color: '#7c2d12', lineHeight: '1.6' }}>
-              Siden Strava ikke har ski under «Gear», matcher SkiPark Pro skiene dine automatisk ved hjelp av en <strong>#kode</strong> i tittel på økta (f.eks <em>"Morgentur #speedmax"</em>).
+              Matcher skiene dine automatisk ved hjelp av <strong>#kode</strong> i tittel eller beskrivelse på Strava-økta.
             </p>
 
             <div style={{ background: '#ffffff', border: '1px solid #fed7aa', padding: '14px 18px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -1073,7 +1188,7 @@ export default function Home() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{ background: '#f59e0b', color: '#ffffff', fontSize: '11px', fontWeight: '800', padding: '3px 8px', borderRadius: '6px' }}>DEMO-DATA</span>
               <span style={{ fontSize: '13px', color: '#92400e', fontWeight: '500' }}>
-                Skiparken inneholder forhåndsutfylte eksempel-ski så du kan teste funksjonene.
+                Skiparken inneholder forhåndsutfylte eksempel-ski.
               </span>
             </div>
             <button
@@ -1184,13 +1299,12 @@ export default function Home() {
           </div>
         )}
 
-        {/* FANER */}
+        {/* FANER (KUN NØDVENDIGE NÅ) */}
         <nav style={{ display: 'flex', gap: '10px', margin: '20px 0', flexWrap: 'wrap' }}>
           {[
             { id: "park", label: parkTabLabel },
             { id: "recommender", label: "⚡ Dagens Skivelger" },
-            { id: "manual", label: "➕ Legg til ski" },
-            { id: "camera", label: "📸 Skiselector AI Bilde" },
+            { id: "manual", label: "➕ Registrer ski" },
             { id: "qr", label: "🏁 QR Målerapport" },
           ].map(tab => (
             <button
@@ -1250,7 +1364,7 @@ export default function Home() {
 
             {filteredSkis.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '50px 20px', color: '#64748b', background: '#ffffff', borderRadius: '18px', border: '1px solid #e2e8f0', fontSize: '16px' }}>
-                Ingen ski registrert her ennå. Trykk <strong>➕ Legg til ski</strong> for å opprette et par.
+                Ingen ski registrert her ennå. Trykk <strong>➕ Registrer ski</strong> for å opprette et par.
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: '18px' }}>
@@ -1316,10 +1430,11 @@ export default function Home() {
 
                           <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '12px', fontSize: '13px', color: '#334155', lineHeight: '1.7', border: '1px solid #f1f5f9' }}>
                             <div>Optimal temperatur: <strong style={{ color: '#0284c7' }}>{ski.tempOptimalMin}°C til {ski.tempOptimalMax}°C</strong></div>
-                            <div>Slip: <strong>{ski.grind}</strong></div>
+                            <div>Slip: <strong>{ski.grind || 'Standard'}</strong></div>
                             <div>Vektområde: <strong>{ski.weightKgMin}-{ski.weightKgMax} kg</strong></div>
                             <div>Binding: <strong style={{ color: '#ea580c' }}>{ski.bindingShift || '0'}</strong></div>
                             <div>Strava-distanse: <strong style={{ color: '#fc4c02' }}>{ski.stravaKm || 0} km</strong></div>
+                            {ski.hbw && <div>HBW / FBW: <strong style={{ color: '#0284c7' }}>{ski.hbw} mm</strong> / <strong style={{ color: '#ff5500' }}>{ski.fbw} mm</strong></div>}
                           </div>
                         </div>
                       </div>
@@ -1338,10 +1453,10 @@ export default function Home() {
           </div>
         )}
 
-        {/* 2. DETALJVISNING AV SKI */}
+        {/* 2. DETALJVISNING AV SKI MED SKISELECTOR IMPORT-KNAPP */}
         {view === "detail" && activeSki && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
               <button
                 onClick={() => setView("park")}
                 style={{ background: '#ffffff', border: '1px solid #cbd5e1', color: '#0284c7', padding: '8px 16px', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', fontWeight: '700' }}
@@ -1349,13 +1464,38 @@ export default function Home() {
                 ← Tilbake til skiparken
               </button>
 
-              <button
-                onClick={() => handleDeleteSki(activeSki.id, `${activeSki.brand} ${activeSki.model}`)}
-                style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', padding: '8px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}
-              >
-                🗑️ Slett dette skiparet
-              </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  ref={skiselectorFileInputRef}
+                  onChange={handleUpdateSkiWithSkiselector}
+                  style={{ display: 'none' }}
+                />
+
+                <button
+                  onClick={() => skiselectorFileInputRef.current?.click()}
+                  style={{ background: '#eff6ff', border: '1.5px solid #0284c7', color: '#0284c7', padding: '8px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <span>📊</span>
+                  <span>{isSkiselectorUpdating ? "Analyserer målerapport..." : "Oppdater spenn med Skiselector-bilde"}</span>
+                </button>
+
+                <button
+                  onClick={() => handleDeleteSki(activeSki.id, `${activeSki.brand} ${activeSki.model}`)}
+                  style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', padding: '8px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}
+                >
+                  🗑️ Slett skipar
+                </button>
+              </div>
             </div>
+
+            {skiselectorError && (
+              <div style={{ padding: '12px 16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', color: '#dc2626', fontSize: '13px', fontWeight: '600' }}>
+                ⚠️ {skiselectorError}
+              </div>
+            )}
 
             <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
@@ -1369,7 +1509,7 @@ export default function Home() {
                     </span>
                   </div>
                   <h2 style={{ fontSize: '26px', margin: '12px 0 4px 0', fontWeight: '800', color: '#0f172a' }}>{activeSki.brand} {activeSki.model}</h2>
-                  <p style={{ color: '#64748b', fontSize: '15px', margin: 0, fontWeight: '500' }}>Profil: {activeSki.camberType} | Slip: {activeSki.grind}</p>
+                  <p style={{ color: '#64748b', fontSize: '15px', margin: 0, fontWeight: '500' }}>Profil: {activeSki.camberType || 'Universal'} | Slip: {activeSki.grind || 'Standard'}</p>
                 </div>
 
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
@@ -1412,32 +1552,46 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Spennkurve SVG */}
+            {/* Spennkurve SVG UTEN hardkodede tall */}
             <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
-              <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '800' }}>
-                Spennkurve ({currentMember.weightKg} kg)
-              </h3>
-              <p style={{ fontSize: '14px', color: '#64748b', margin: '0 0 20px 0' }}>Beregnet kurveprofil ved halvvekt (HBW) og fullvekt (FBW).</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <div>
+                  <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '800' }}>
+                    Spennkurve ({currentMember.weightKg} kg)
+                  </h3>
+                  <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>
+                    {activeSki.hbw 
+                      ? "Målerapport registrert. Viser halvvekt (HBW) og fullvekt (FBW)." 
+                      : "Ingen nøyaktige spenntall er registrert ennå. Trykk «Oppdater spenn med Skiselector-bilde» over for å hente kurve."}
+                  </p>
+                </div>
+              </div>
 
               <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
                 <svg viewBox="0 0 800 140" style={{ width: '100%', height: '140px' }}>
                   <line x1="20" y1="110" x2="780" y2="110" stroke="#cbd5e1" strokeWidth="2.5" strokeDasharray="4" />
-                  <path d="M 60 108 Q 400 24 740 108" fill="none" stroke="#0284c7" strokeWidth="4" />
-                  <path d="M 120 109 Q 400 82 680 109" fill="none" stroke="#ff5500" strokeWidth="3" />
+                  {activeSki.hbw && (
+                    <path d="M 60 108 Q 400 24 740 108" fill="none" stroke="#0284c7" strokeWidth="4" />
+                  )}
+                  {activeSki.fbw && (
+                    <path d="M 120 109 Q 400 82 680 109" fill="none" stroke="#ff5500" strokeWidth="3" />
+                  )}
                   <line x1="400" y1="15" x2="400" y2="110" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="3" />
-                  <rect x="270" y="105" width="200" height="9" fill="#10b981" opacity="0.75" rx="3" />
+                  {activeSki.pocketFrontCm && (
+                    <rect x="270" y="105" width="200" height="9" fill="#10b981" opacity="0.75" rx="3" />
+                  )}
                 </svg>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: '700', color: '#334155', paddingTop: '16px', borderTop: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '10px' }}>
-                  <div>HBW (Halvvekt): <strong style={{ color: '#0284c7' }}>{activeSki.hbw || 1.15} mm</strong></div>
-                  <div>FBW (Fullvekt): <strong style={{ color: '#ff5500' }}>{activeSki.fbw || 0.22} mm</strong></div>
-                  <div>Smørelomme: <strong style={{ color: '#059669' }}>+{activeSki.pocketFrontCm || 38}cm / -{activeSki.pocketRearCm || 16}cm</strong></div>
+                  <div>HBW (Halvvekt): <strong style={{ color: '#0284c7' }}>{activeSki.hbw ? `${activeSki.hbw} mm` : "Ikke målt"}</strong></div>
+                  <div>FBW (Fullvekt): <strong style={{ color: '#ff5500' }}>{activeSki.fbw ? `${activeSki.fbw} mm` : "Ikke målt"}</strong></div>
+                  <div>Smørelomme: <strong style={{ color: '#059669' }}>{activeSki.pocketFrontCm ? `+${activeSki.pocketFrontCm}cm / -${activeSki.pocketRearCm || 0}cm` : "Ikke målt"}</strong></div>
                   <div>Total distanse: <strong style={{ color: '#ea580c' }}>{activeSki.stravaKm || 0} km</strong></div>
                 </div>
               </div>
             </div>
 
-            {/* Notater og Smørelogg */}
+            {/* Notater og Logg */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
               <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
                 <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: '800' }}>📝 Erfaringer & Førenotater</h4>
@@ -1490,255 +1644,255 @@ export default function Home() {
           </div>
         )}
 
-        {/* 3. MANUELL REGISTRERING */}
+        {/* 3. REGISTRER SKI: NÅ MED DIREKTE BILDE-SCAN AV SKI / KLISTREMERKE */}
         {view === "manual" && (
-          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '22px', padding: '30px', maxWidth: '640px', margin: '0 auto', boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
-            <h2 style={{ fontSize: '22px', margin: '0 0 20px 0', fontWeight: '800' }}>➕ Manuell registrering av skipar</h2>
+          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '22px', padding: '30px', maxWidth: '680px', margin: '0 auto', boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div>
+                <h2 style={{ fontSize: '22px', margin: 0, fontWeight: '800' }}>➕ Registrer skipar</h2>
+                <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#64748b' }}>Ta bilde av skien og klistrelappen, eller fyll ut manuelt.</p>
+              </div>
+            </div>
+
+            {/* KAMERAKNAPP FOR HURTIG-REGISTRERING */}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              ref={registerFileInputRef}
+              onChange={handleRegisterImageCapture}
+              style={{ display: 'none' }}
+            />
+
+            <div
+              onClick={() => registerFileInputRef.current?.click()}
+              style={{
+                border: '2px dashed #0284c7',
+                borderRadius: '16px',
+                padding: '24px',
+                textAlign: 'center',
+                cursor: 'pointer',
+                background: '#f0f9ff',
+                marginBottom: '24px'
+              }}
+            >
+              <div style={{ fontSize: '32px', marginBottom: '6px' }}>📸</div>
+              <div style={{ fontSize: '15px', fontWeight: '800', color: '#0284c7' }}>
+                {isRegisterAnalyzing ? "⏳ Gemini AI analyserer ski og klistrelapp..." : "Ta bilde av ski og klistrelapp (AI fyller ut for deg)"}
+              </div>
+              <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
+                Leser automatisk merke, modell, lengde, vektintervall og måletall
+              </div>
+            </div>
+
+            {registerAiError && (
+              <div style={{ padding: '12px 16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', color: '#dc2626', fontSize: '13px', fontWeight: '600', marginBottom: '18px' }}>
+                ⚠️ {registerAiError}
+              </div>
+            )}
+
+            {registerImage && (
+              <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', border: '1px solid #cbd5e1', maxHeight: '160px', background: '#000', display: 'flex', justifyContent: 'center', marginBottom: '18px' }}>
+                <img src={registerImage} alt="Registreringsbilde" style={{ maxHeight: '160px', width: 'auto', objectFit: 'contain' }} />
+                <button
+                  type="button"
+                  onClick={() => { setRegisterImage(null); }}
+                  style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.7)', color: '#fff', border: 'none', borderRadius: '6px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}
+                >
+                  ✕ Fjern
+                </button>
+              </div>
+            )}
+
+            {/* KONTROLLERT SKJEMA (OPPDATERES LIVE AV AI) */}
             <form onSubmit={(e) => {
               e.preventDefault();
-              const fd = new FormData(e.target);
-              const rawTag = fd.get("tag") || "";
-              const cleanTag = rawTag.trim().startsWith("#") ? rawTag.trim().toLowerCase() : (rawTag.trim() ? `#${rawTag.trim().toLowerCase()}` : "#ski");
+              const cleanTag = newSkiData.tag.trim().startsWith("#") 
+                ? newSkiData.tag.trim().toLowerCase() 
+                : (newSkiData.tag.trim() ? `#${newSkiData.tag.trim().toLowerCase()}` : "#ski");
 
               handleAddSki({
                 id: "ski-" + Date.now(),
                 isDemo: false,
-                memberId: fd.get("memberId"),
+                memberId: activeMemberId,
                 tag: cleanTag,
-                brand: fd.get("brand"),
-                model: fd.get("model"),
-                type: fd.get("type"),
-                camberType: fd.get("camber") || "Allround",
-                lengthCm: parseInt(fd.get("length")) || 190,
-                weightKgMin: parseFloat(fd.get("wMin")) || 60,
-                weightKgMax: parseFloat(fd.get("wMax")) || 70,
-                tempOptimalMin: parseFloat(fd.get("tempMin")) || -10,
-                tempOptimalMax: parseFloat(fd.get("tempMax")) || -2,
+                brand: newSkiData.brand,
+                model: newSkiData.model || "Modell",
+                type: newSkiData.type,
+                camberType: newSkiData.camberType || "Universal",
+                lengthCm: parseInt(newSkiData.lengthCm) || 190,
+                weightKgMin: parseFloat(newSkiData.weightKgMin) || 65,
+                weightKgMax: parseFloat(newSkiData.weightKgMax) || 80,
+                tempOptimalMin: parseFloat(newSkiData.tempOptimalMin) || -10,
+                tempOptimalMax: parseFloat(newSkiData.tempOptimalMax) || -2,
                 bindingShift: "0",
-                grind: fd.get("grind") || "Universal",
-                hbw: parseFloat(fd.get("hbw")) || 1.15,
-                fbw: parseFloat(fd.get("fbw")) || 0.22,
-                pocketFrontCm: 35,
-                pocketRearCm: 15,
+                grind: newSkiData.grind || "Standard",
+                hbw: newSkiData.hbw ? parseFloat(newSkiData.hbw) : null,
+                fbw: newSkiData.fbw ? parseFloat(newSkiData.fbw) : null,
+                pocketFrontCm: newSkiData.pocketFrontCm ? parseFloat(newSkiData.pocketFrontCm) : null,
+                pocketRearCm: newSkiData.pocketRearCm ? parseFloat(newSkiData.pocketRearCm) : null,
                 stravaKm: 0,
-                notes: fd.get("notes") || "",
+                notes: newSkiData.notes,
                 maintenanceLog: []
               });
             }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
               <div>
-                <label style={{ fontSize: '13px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>Hvem tilhører dette paret?</label>
-                <select name="memberId" defaultValue={activeMemberId} style={{ width: '100%', background: '#f8fafc', border: '1.5px solid #cbd5e1', color: '#0284c7', padding: '12px', borderRadius: '12px', fontWeight: '700', fontSize: '15px' }}>
+                <label style={{ fontSize: '13px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>Hvem tilhører paret?</label>
+                <select 
+                  value={activeMemberId} 
+                  onChange={(e) => setActiveMemberId(e.target.value)} 
+                  style={{ width: '100%', background: '#f8fafc', border: '1.5px solid #cbd5e1', color: '#0284c7', padding: '12px', borderRadius: '12px', fontWeight: '700', fontSize: '15px' }}
+                >
                   {members.map(m => (
                     <option key={m.id} value={m.id}>{m.name} ({m.weightKg} kg)</option>
                   ))}
-                  <option value="all">Fellespar / Alle</option>
                 </select>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                 <div>
                   <label style={{ fontSize: '13px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>Merke</label>
-                  <select name="brand" style={{ width: '100%', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#0f172a', padding: '12px', borderRadius: '12px', fontSize: '14px', fontWeight: '600' }}>
-                    <option>Fischer</option><option>Madshus</option><option>Rossignol</option><option>Salomon</option><option>Atomic</option><option>Kästle</option>
-                  </select>
+                  <input
+                    value={newSkiData.brand}
+                    onChange={(e) => setNewSkiData({ ...newSkiData, brand: e.target.value })}
+                    required
+                    style={{ width: '100%', background: '#ffffff', border: '1.5px solid #cbd5e1', color: '#0f172a', padding: '12px', borderRadius: '12px', fontSize: '14px', fontWeight: '700', boxSizing: 'border-box' }}
+                  />
                 </div>
                 <div>
                   <label style={{ fontSize: '13px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>Modell</label>
-                  <input name="model" required placeholder="f.eks Speedmax 3D" style={{ width: '100%', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#0f172a', padding: '12px', borderRadius: '12px', boxSizing: 'border-box', fontSize: '14px' }} />
+                  <input
+                    value={newSkiData.model}
+                    onChange={(e) => setNewSkiData({ ...newSkiData, model: e.target.value })}
+                    required
+                    placeholder="f.eks RX 10 2.0 eller Redster C9"
+                    style={{ width: '100%', background: '#ffffff', border: '1.5px solid #cbd5e1', color: '#0f172a', padding: '12px', borderRadius: '12px', fontSize: '14px', fontWeight: '700', boxSizing: 'border-box' }}
+                  />
                 </div>
               </div>
 
-              <div>
-                <label style={{ fontSize: '13px', fontWeight: '700', color: '#c2410c', display: 'block', marginBottom: '6px' }}>Strava-hashtag (#kode)</label>
-                <input name="tag" placeholder="f.eks #speedmax eller #kaldski" style={{ width: '100%', background: '#fff7ed', border: '1.5px solid #fed7aa', color: '#c2410c', padding: '12px', borderRadius: '12px', boxSizing: 'border-box', fontSize: '14px', fontWeight: '700' }} />
-                <span style={{ fontSize: '12px', color: '#9a3412', marginTop: '4px', display: 'block' }}>Skriv denne hashtaggen i tittel på Strava-økta for automatisk km-logging.</span>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ fontSize: '13px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>Stilart</label>
-                  <select name="type" style={{ width: '100%', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#0284c7', padding: '12px', borderRadius: '12px', fontWeight: '700', fontSize: '14px' }}>
-                    <option>Skate</option><option>Klassisk</option><option>Felleski</option>
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>Stilart</label>
+                  <select
+                    value={newSkiData.type}
+                    onChange={(e) => setNewSkiData({ ...newSkiData, type: e.target.value })}
+                    style={{ width: '100%', background: '#ffffff', border: '1.5px solid #cbd5e1', color: '#0284c7', padding: '10px', borderRadius: '10px', fontWeight: '700', fontSize: '14px' }}
+                  >
+                    <option>Klassisk</option>
+                    <option>Skate</option>
+                    <option>Felleski</option>
                   </select>
                 </div>
+
                 <div>
-                  <label style={{ fontSize: '13px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>Lengde (cm)</label>
-                  <input name="length" type="number" defaultValue="191" style={{ width: '100%', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#0f172a', padding: '12px', borderRadius: '12px', boxSizing: 'border-box', fontSize: '14px' }} />
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>Lengde (cm)</label>
+                  <input
+                    type="number"
+                    value={newSkiData.lengthCm}
+                    onChange={(e) => setNewSkiData({ ...newSkiData, lengthCm: e.target.value })}
+                    style={{ width: '100%', background: '#ffffff', border: '1.5px solid #cbd5e1', color: '#0f172a', padding: '10px', borderRadius: '10px', fontSize: '14px', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: '#c2410c', display: 'block', marginBottom: '6px' }}>Strava #tag</label>
+                  <input
+                    value={newSkiData.tag}
+                    placeholder="#tag"
+                    onChange={(e) => setNewSkiData({ ...newSkiData, tag: e.target.value })}
+                    style={{ width: '100%', background: '#fff7ed', border: '1.5px solid #fed7aa', color: '#c2410c', padding: '10px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', boxSizing: 'border-box' }}
+                  />
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ fontSize: '13px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>Min vekt (kg)</label>
-                  <input name="wMin" type="number" defaultValue={String(currentMember.weightKg - 3)} style={{ width: '100%', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#0f172a', padding: '12px', borderRadius: '12px', boxSizing: 'border-box', fontSize: '14px' }} />
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>Min vekt (kg)</label>
+                  <input
+                    type="number"
+                    value={newSkiData.weightKgMin}
+                    onChange={(e) => setNewSkiData({ ...newSkiData, weightKgMin: e.target.value })}
+                    style={{ width: '100%', background: '#ffffff', border: '1.5px solid #cbd5e1', color: '#0f172a', padding: '10px', borderRadius: '10px', fontSize: '14px', boxSizing: 'border-box' }}
+                  />
                 </div>
                 <div>
-                  <label style={{ fontSize: '13px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>Maks vekt (kg)</label>
-                  <input name="wMax" type="number" defaultValue={String(currentMember.weightKg + 3)} style={{ width: '100%', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#0f172a', padding: '12px', borderRadius: '12px', boxSizing: 'border-box', fontSize: '14px' }} />
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>Maks vekt (kg)</label>
+                  <input
+                    type="number"
+                    value={newSkiData.weightKgMax}
+                    onChange={(e) => setNewSkiData({ ...newSkiData, weightKgMax: e.target.value })}
+                    style={{ width: '100%', background: '#ffffff', border: '1.5px solid #cbd5e1', color: '#0f172a', padding: '10px', borderRadius: '10px', fontSize: '14px', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>Slipestruktur</label>
+                  <input
+                    value={newSkiData.grind}
+                    onChange={(e) => setNewSkiData({ ...newSkiData, grind: e.target.value })}
+                    placeholder="f.eks CW1"
+                    style={{ width: '100%', background: '#ffffff', border: '1.5px solid #cbd5e1', color: '#0f172a', padding: '10px', borderRadius: '10px', fontSize: '14px', boxSizing: 'border-box' }}
+                  />
                 </div>
               </div>
 
-              <button type="submit" style={{ background: '#059669', color: '#ffffff', border: 'none', padding: '16px', borderRadius: '14px', fontWeight: '800', cursor: 'pointer', marginTop: '10px', fontSize: '16px' }}>
-                Lagre ski i samlingen
+              {/* SPENNTALL (Valgfritt – fylles hvis det sto på lappen) */}
+              <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '12px', fontWeight: '800', color: '#475569', marginBottom: '8px' }}>
+                  MÅLEVERDIER FRA LAPP / SKI (HVIS SYNLIG)
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '8px' }}>
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: '700', color: '#0284c7' }}>HBW (mm)</label>
+                    <input
+                      value={newSkiData.hbw}
+                      placeholder="1.29"
+                      onChange={(e) => setNewSkiData({ ...newSkiData, hbw: e.target.value })}
+                      style={{ width: '100%', background: '#fff', border: '1px solid #cbd5e1', padding: '8px', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: '700', color: '#ff5500' }}>FBW (mm)</label>
+                    <input
+                      value={newSkiData.fbw}
+                      placeholder="0.22"
+                      onChange={(e) => setNewSkiData({ ...newSkiData, fbw: e.target.value })}
+                      style={{ width: '100%', background: '#fff', border: '1px solid #cbd5e1', padding: '8px', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: '700', color: '#059669' }}>Lomme foran</label>
+                    <input
+                      value={newSkiData.pocketFrontCm}
+                      placeholder="38"
+                      onChange={(e) => setNewSkiData({ ...newSkiData, pocketFrontCm: e.target.value })}
+                      style={{ width: '100%', background: '#fff', border: '1px solid #cbd5e1', padding: '8px', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: '700', color: '#059669' }}>Lomme bak</label>
+                    <input
+                      value={newSkiData.pocketRearCm}
+                      placeholder="16"
+                      onChange={(e) => setNewSkiData({ ...newSkiData, pocketRearCm: e.target.value })}
+                      style={{ width: '100%', background: '#fff', border: '1px solid #cbd5e1', padding: '8px', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                style={{ background: '#059669', color: '#ffffff', border: 'none', padding: '16px', borderRadius: '14px', fontWeight: '800', cursor: 'pointer', marginTop: '6px', fontSize: '16px', boxShadow: '0 6px 16px rgba(5, 150, 105, 0.25)' }}
+              >
+                ✓ Lagre ski i {getPossessiveTitle(currentMember, user)}
               </button>
             </form>
           </div>
         )}
 
-        {/* 4. SKISELECTOR AI BILDEAVLESNING */}
-        {view === "camera" && (
-          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '22px', padding: '32px', maxWidth: '640px', margin: '0 auto', boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
-            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-              <div style={{ fontSize: '42px', marginBottom: '10px' }}>🤖</div>
-              <h2 style={{ fontSize: '22px', margin: '0 0 8px 0', fontWeight: '800' }}>Skiselector AI-bildeavlesning</h2>
-              <p style={{ fontSize: '15px', color: '#64748b', margin: 0, lineHeight: '1.5' }}>
-                Ta bilde av Skiselector-skjermen eller papirrapporten. Gemini AI leser av HBW, FBW, smøresoner og vekt automatisk.
-              </p>
-            </div>
-
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              ref={fileInputRef}
-              onChange={handleImageCapture}
-              style={{ display: 'none' }}
-            />
-
-            {!capturedImage ? (
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                style={{
-                  border: '2.5px dashed #0284c7',
-                  borderRadius: '16px',
-                  padding: '48px 24px',
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  background: '#f0f9ff'
-                }}
-              >
-                <div style={{ fontSize: '36px', marginBottom: '10px' }}>📸</div>
-                <div style={{ fontSize: '16px', fontWeight: '800', color: '#0284c7', marginBottom: '6px' }}>
-                  Trykk her for å åpne kamera / laste opp Skiselector-bilde
-                </div>
-                <div style={{ fontSize: '13px', color: '#64748b' }}>
-                  Støtter direkte mobilkamera, foto fra biblioteket og skjermbilder
-                </div>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-                <div style={{ position: 'relative', borderRadius: '14px', overflow: 'hidden', border: '1px solid #cbd5e1', maxHeight: '260px', background: '#000', display: 'flex', justifyContent: 'center' }}>
-                  <img src={capturedImage} alt="Skiselector" style={{ maxHeight: '260px', width: 'auto', objectFit: 'contain' }} />
-                  <button
-                    onClick={() => { setCapturedImage(null); setAnalyzedSkiData(null); setAiError(""); fileInputRef.current.value = ""; }}
-                    style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.75)', color: '#ffffff', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
-                  >
-                    ✕ Ta nytt bilde
-                  </button>
-                </div>
-
-                {isAnalyzing && (
-                  <div style={{ textAlign: 'center', padding: '24px', background: '#eff6ff', borderRadius: '14px', border: '1px solid #bfdbfe', color: '#0284c7', fontSize: '15px', fontWeight: '700' }}>
-                    ⏳ Gemini AI analyserer Skiselector-skjermen og henter spenntall...
-                  </div>
-                )}
-
-                {aiError && (
-                  <div style={{ padding: '14px 18px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', color: '#dc2626', fontSize: '13px', fontWeight: '600' }}>
-                    ⚠️ {aiError}
-                  </div>
-                )}
-
-                {analyzedSkiData && !isAnalyzing && (
-                  <form onSubmit={(e) => {
-                    e.preventDefault();
-                    const fd = new FormData(e.target);
-                    handleAddSki({
-                      id: "ski-" + Date.now(),
-                      isDemo: false,
-                      memberId: activeMemberId,
-                      tag: "#" + (fd.get("brand") || "ski").toLowerCase(),
-                      brand: fd.get("brand") || "Ukjent",
-                      model: fd.get("model") || "Skiselector Par",
-                      type: fd.get("type") || "Klassisk",
-                      camberType: "Skiselector Kurve",
-                      lengthCm: parseInt(fd.get("length")) || 207,
-                      weightKgMin: parseFloat(fd.get("wMin")) || (currentMember.weightKg - 3),
-                      weightKgMax: parseFloat(fd.get("wMax")) || (currentMember.weightKg + 3),
-                      tempOptimalMin: -12,
-                      tempOptimalMax: -2,
-                      bindingShift: "0",
-                      grind: "Fabrikkslip",
-                      hbw: parseFloat(fd.get("hbw")) || null,
-                      fbw: parseFloat(fd.get("fbw")) || null,
-                      pocketFrontCm: parseFloat(fd.get("pocketFront")) || 38,
-                      pocketRearCm: parseFloat(fd.get("pocketRear")) || 16,
-                      stravaKm: 0,
-                      notes: "Automatisk innlest fra Skiselector bilde via Gemini AI",
-                      maintenanceLog: []
-                    });
-                  }} style={{ background: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                    <div style={{ fontSize: '15px', fontWeight: '800', color: '#059669' }}>
-                      ✓ Gemini AI leste av disse verdiene fra bildet (bekreft eller juster):
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                      <div>
-                        <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569' }}>Merke</label>
-                        <input name="brand" defaultValue={analyzedSkiData.brand || ""} placeholder="F.eks Fischer / Madshus" style={{ width: '100%', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a', padding: '10px', borderRadius: '10px', boxSizing: 'border-box', fontSize: '14px', fontWeight: '700' }} />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569' }}>Modell</label>
-                        <input name="model" defaultValue={analyzedSkiData.model || ""} placeholder="F.eks Speedmax / Redline" style={{ width: '100%', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a', padding: '10px', borderRadius: '10px', boxSizing: 'border-box', fontSize: '14px', fontWeight: '700' }} />
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px' }}>
-                      <div>
-                        <label style={{ fontSize: '11px', fontWeight: '700', color: '#475569' }}>HBW (mm)</label>
-                        <input name="hbw" defaultValue={analyzedSkiData.hbw || ""} step="0.01" placeholder="1.15" style={{ width: '100%', background: '#ffffff', border: '1.5px solid #0284c7', color: '#0284c7', padding: '10px', borderRadius: '10px', boxSizing: 'border-box', fontSize: '14px', fontWeight: '800' }} />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: '11px', fontWeight: '700', color: '#475569' }}>FBW (mm)</label>
-                        <input name="fbw" defaultValue={analyzedSkiData.fbw || ""} step="0.01" placeholder="0.22" style={{ width: '100%', background: '#ffffff', border: '1.5px solid #ff5500', color: '#ff5500', padding: '10px', borderRadius: '10px', boxSizing: 'border-box', fontSize: '14px', fontWeight: '800' }} />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: '11px', fontWeight: '700', color: '#475569' }}>Lomme foran</label>
-                        <input name="pocketFront" defaultValue={analyzedSkiData.pocketFront || ""} placeholder="38" style={{ width: '100%', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a', padding: '10px', borderRadius: '10px', boxSizing: 'border-box', fontSize: '14px' }} />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: '11px', fontWeight: '700', color: '#475569' }}>Lomme bak</label>
-                        <input name="pocketRear" defaultValue={analyzedSkiData.pocketRear || ""} placeholder="16" style={{ width: '100%', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a', padding: '10px', borderRadius: '10px', boxSizing: 'border-box', fontSize: '14px' }} />
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                      <div>
-                        <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569' }}>Stilart</label>
-                        <select name="type" defaultValue={analyzedSkiData.type || "Klassisk"} style={{ width: '100%', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0284c7', padding: '10px', borderRadius: '10px', fontSize: '14px', fontWeight: '700' }}>
-                          <option>Klassisk</option><option>Skate</option><option>Felleski</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569' }}>Lengde (cm)</label>
-                        <input name="length" defaultValue={analyzedSkiData.lengthCm || 207} style={{ width: '100%', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a', padding: '10px', borderRadius: '10px', boxSizing: 'border-box', fontSize: '14px' }} />
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      style={{ background: '#059669', color: '#ffffff', border: 'none', padding: '14px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer', fontSize: '15px' }}
-                    >
-                      Legg til i {getPossessiveTitle(currentMember, user)}
-                    </button>
-                  </form>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 5. QR-SKANNING */}
+        {/* 4. QR-SKANNING */}
         {view === "qr" && (
           <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '22px', padding: '36px 24px', textAlign: 'center', maxWidth: '580px', margin: '0 auto', boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
             <div style={{ fontSize: '46px', marginBottom: '14px' }}>🏁</div>
