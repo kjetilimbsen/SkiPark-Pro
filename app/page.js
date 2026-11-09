@@ -27,24 +27,16 @@ const RACING_PRESETS = [
   { brand: "Kästle", model: "RX 10 2.0 Classic Plus", type: "Klassisk", grind: "CW2", lengthCm: 206, camber: "Plus / Våt", hbw: 1.35, fbw: 0.28, minW: 80, maxW: 90, tempMin: -3, tempMax: 4 },
   { brand: "Kästle", model: "RX 10 2.0 Skate", type: "Skate", grind: "UW-1", lengthCm: 192, camber: "Universal", hbw: 1.40, fbw: 0.35, minW: 75, maxW: 88, tempMin: -10, tempMax: 2 },
   { brand: "Fischer", model: "Speedmax 3D Skate Plus", type: "Skate", grind: "P5-1", lengthCm: 191, camber: "Plus 1Q", hbw: 1.35, fbw: 0.30, minW: 74, maxW: 86, tempMin: -8, tempMax: 2 },
-  { brand: "Fischer", model: "Speedmax 3D Skate Cold", type: "Skate", grind: "C1-1", lengthCm: 191, camber: "Cold 610", hbw: 1.25, fbw: 0.22, minW: 74, maxW: 86, tempMin: -18, tempMax: -2 },
   { brand: "Fischer", model: "Speedmax 3D Classic Cold", type: "Klassisk", grind: "C12-1", lengthCm: 207, camber: "902 Kald", hbw: 1.15, fbw: 0.18, minW: 76, maxW: 88, tempMin: -16, tempMax: -2 },
-  { brand: "Fischer", model: "Speedmax 3D Classic Plus", type: "Klassisk", grind: "P5-1", lengthCm: 207, camber: "812 Plus", hbw: 1.32, fbw: 0.26, minW: 78, maxW: 90, tempMin: -4, tempMax: 4 },
-  { brand: "Fischer", model: "Twin Skin Speedmax 3D", type: "Felleski", grind: "P5-1", lengthCm: 207, camber: "Medium", hbw: 1.18, fbw: 0.24, minW: 76, maxW: 88, tempMin: -10, tempMax: 3 },
   { brand: "Madshus", model: "Redline 3.0 Classic Cold", type: "Klassisk", grind: "M61", lengthCm: 207, camber: "Cold", hbw: 1.16, fbw: 0.19, minW: 75, maxW: 87, tempMin: -15, tempMax: -2 },
-  { brand: "Madshus", model: "Redline 3.0 Classic Warm", type: "Klassisk", grind: "M63", lengthCm: 207, camber: "Warm", hbw: 1.38, fbw: 0.30, minW: 78, maxW: 90, tempMin: -2, tempMax: 5 },
   { brand: "Madshus", model: "Redline 3.0 Skate F2", type: "Skate", grind: "M62", lengthCm: 192, camber: "Hard track", hbw: 1.42, fbw: 0.32, minW: 74, maxW: 86, tempMin: -8, tempMax: 2 },
   { brand: "Rossignol", model: "X-IUM Premium+ Classic C2", type: "Klassisk", grind: "K7", lengthCm: 207, camber: "C2 Universal", hbw: 1.20, fbw: 0.21, minW: 76, maxW: 88, tempMin: -10, tempMax: 0 },
-  { brand: "Rossignol", model: "X-IUM Premium+ Classic C3", type: "Klassisk", grind: "W3", lengthCm: 207, camber: "C3 Klister/Våt", hbw: 1.45, fbw: 0.32, minW: 78, maxW: 90, tempMin: -1, tempMax: 6 },
-  { brand: "Rossignol", model: "X-IUM Premium+ S2 Skate", type: "Skate", grind: "K7", lengthCm: 193, camber: "S2 Universal", hbw: 1.38, fbw: 0.30, minW: 74, maxW: 86, tempMin: -8, tempMax: 2 },
-  { brand: "Atomic", model: "Redster C9 Carbon Skintec", type: "Felleski", grind: "AM7", lengthCm: 205, camber: "Universal", hbw: 1.12, fbw: 0.22, minW: 76, maxW: 88, tempMin: -10, tempMax: 3 },
-  { brand: "Atomic", model: "Redster S9 Gen S Skate", type: "Skate", grind: "AM6", lengthCm: 183, camber: "Speedline", hbw: 1.40, fbw: 0.34, minW: 70, maxW: 90, tempMin: -10, tempMax: 2 },
-  { brand: "Salomon", model: "S/Lab Carbon eSkin", type: "Felleski", grind: "G5 Universal", lengthCm: 206, camber: "Medium", hbw: 1.15, fbw: 0.22, minW: 75, maxW: 88, tempMin: -8, tempMax: 2 }
+  { brand: "Atomic", model: "Redster C9 Carbon Skintec", type: "Felleski", grind: "AM7", lengthCm: 205, camber: "Universal", hbw: 1.12, fbw: 0.22, minW: 76, maxW: 88, tempMin: -8, tempMax: 3 }
 ];
 
 const INITIAL_MEMBERS = [
   { id: "m-1", name: "Meg", weightKg: 86 },
-  { id: "m-2", name: "Junior", weightKg: 52 }
+  { id: "m-2", name: "Junior", weightKg: 54 }
 ];
 
 const INITIAL_SKIS = [
@@ -73,35 +65,6 @@ const INITIAL_SKIS = [
     notes: "Stabil og god birkenski.",
     maintenanceLog: [
       { date: "2025-01-15", title: "Mettet med Swix Marathon", type: "Glid" }
-    ]
-  },
-  {
-    id: "ski-2",
-    isDemo: true,
-    memberId: "m-1",
-    skiNumber: "#02",
-    tag: "#redline",
-    brand: "Madshus",
-    model: "Redline 3.0 Classic Cold",
-    type: "Klassisk",
-    camberType: "Tørrvoks / Kald",
-    tempOptimalMin: -15,
-    tempOptimalMax: -2,
-    bindingShift: "+1",
-    lengthCm: 207,
-    weightKgMin: 78,
-    weightKgMax: 88,
-    grind: "M61 Kald",
-    hbw: 1.16,
-    fbw: 0.19,
-    pocketFrontCm: 38,
-    pocketRearCm: 16,
-    stravaKm: 88.0,
-    thumbnailUrl: null,
-    receiptUrl: null,
-    notes: "Eksempel på tørrvoksski. Null subb og sikkert feste.",
-    maintenanceLog: [
-      { date: "2025-02-02", title: "Rode B17 + Swix VP45", type: "Feste" }
     ]
   }
 ];
@@ -164,99 +127,78 @@ function getWaxAdvice(temp, humidity, skiType) {
   return { kick: "Klisterføre: Rode Multigrade eller Swix Universal.", glide: "Swix PS10 / Gul. Grov rill." };
 }
 
-// Tolker rådata, rapport-tekst eller koder fra Skiselector / Skiplukker'n
-function parseSkiTextOrData(rawInput) {
-  if (!rawInput) return {};
-  const text = String(rawInput).replace(/,/g, '.');
+// Robust tolk for ren Skiselector-skjermbilde OCR-tekst
+function parseSkiselectorOcrText(rawText) {
+  const text = (rawText || "").replace(/,/g, '.');
   const d = {};
 
-  try {
-    if (text.includes("?") || text.startsWith("http")) {
-      const url = new URL(text);
-      if (url.searchParams.get("hbw")) d.hbw = url.searchParams.get("hbw");
-      if (url.searchParams.get("fbw")) d.fbw = url.searchParams.get("fbw");
-      if (url.searchParams.get("front")) d.pocketFrontCm = url.searchParams.get("front");
-      if (url.searchParams.get("rear")) d.pocketRearCm = url.searchParams.get("rear");
-      if (url.searchParams.get("length")) d.lengthCm = Number(url.searchParams.get("length"));
-      if (url.searchParams.get("weight")) {
-        const w = Number(url.searchParams.get("weight"));
-        d.weightKgMin = w - 5;
-        d.weightKgMax = w + 5;
-      }
-    }
-  } catch(e) {}
-
-  // Regex-tolking for Skiselector parametere
-  const hbwM = text.match(/(?:HBW|HALF|HALVVEKT)[\s:=]*([0-2]\.\d{1,2})/i) || text.match(/\b(1\.\d{2})\b/);
-  if (hbwM && !d.hbw) d.hbw = hbwM[1];
-
-  const fbwM = text.match(/(?:FBW|FULL|FULLVEKT)[\s:=]*(0\.\d{1,2})/i) || text.match(/\b(0\.\d{2})\b/);
-  if (fbwM && !d.fbw) d.fbw = fbwM[1];
-
-  const pFrontM = text.match(/(?:FRONT|PF|LOMME\s*FORAN)[\s:=]*(\d{2})/i);
-  if (pFrontM && !d.pocketFrontCm) d.pocketFrontCm = pFrontM[1];
-
-  const pRearM = text.match(/(?:REAR|PR|LOMME\s*BAK)[\s:=]*(\d{2})/i);
-  if (pRearM && !d.pocketRearCm) d.pocketRearCm = pRearM[1];
-
-  const lenM = text.match(/\b(18[0-9]|19[0-9]|20[0-9]|21[0])\b/);
-  if (lenM && !d.lengthCm) d.lengthCm = Number(lenM[1]);
-
-  const wRange = text.match(/(\d{2,3})\s*[-–/]\s*(\d{2,3})\s*(?:kg)?/i);
-  if (wRange && !d.weightKgMin) {
-    d.weightKgMin = Number(wRange[1]);
-    d.weightKgMax = Number(wRange[2]);
+  // 1. Skier weight: XX - YY kg
+  const weightMatch = text.match(/(?:Skier\s*weight|weight|Vekt)[\s:]*(\d{2,3})\s*[-–]\s*(\d{2,3})\s*kg/i);
+  if (weightMatch) {
+    d.weightKgMin = Number(weightMatch[1]);
+    d.weightKgMax = Number(weightMatch[2]);
   }
 
-  // Merke-gjenkjenning
-  if (/kästle|kaestle/i.test(text)) d.brand = "Kästle";
+  // 2. Höjd / HBW og FBW fra tabellen oppe til høyre
+  // Typisk: "Höjd = 0.79 mm 0.02 mm" eller "0.95 mm 0.21 mm"
+  const hojdMatch = text.match(/H[oö]jd\s*=\s*(\d+\.\d{1,2})\s*mm\s*(\d+\.\d{1,2})\s*mm/i);
+  if (hojdMatch) {
+    d.hbw = hojdMatch[1];
+    d.fbw = hojdMatch[2];
+  } else {
+    // Frittstående HBW / FBW søk
+    const hbwM = text.match(/HBW[\s:=]*([0-2]\.\d{1,2})/i) || text.match(/H[oö]jd[\s:=]*([0-2]\.\d{1,2})/i);
+    if (hbwM) d.hbw = hbwM[1];
+
+    const fbwM = text.match(/FBW[\s:=]*(0\.\d{1,2})/i);
+    if (fbwM) d.fbw = fbwM[1];
+  }
+
+  // 3. Lengde (fra nedtrekksmeny til venstre, f.eks 195, 206, 207)
+  const lengthMatch = text.match(/\b(18[0-9]|19[0-9]|20[0-9]|21[0])\b/);
+  if (lengthMatch) {
+    d.lengthCm = Number(lengthMatch[1]);
+  }
+
+  // 4. Smørelommer fra aksen nederst
+  // Ser etter f.eks "-29cm" eller "29cm" og "+26cm"
+  const frontM = text.match(/[-–](\d{2})\s*cm/);
+  if (frontM) d.pocketFrontCm = frontM[1];
+
+  const rearM = text.match(/\+(\d{2})\s*cm/);
+  if (rearM) d.pocketRearCm = rearM[1];
+
+  // 5. Merke
+  if (/madshus/i.test(text)) d.brand = "Madshus";
+  else if (/kästle|kaestle/i.test(text)) d.brand = "Kästle";
   else if (/fischer/i.test(text)) d.brand = "Fischer";
-  else if (/madshus/i.test(text)) d.brand = "Madshus";
   else if (/rossignol/i.test(text)) d.brand = "Rossignol";
   else if (/atomic/i.test(text)) d.brand = "Atomic";
   else if (/salomon/i.test(text)) d.brand = "Salomon";
 
-  // Modell
-  if (/speedmax/i.test(text)) d.model = "Speedmax 3D";
-  else if (/redline/i.test(text)) d.model = "Redline 3.0";
-  else if (/rx\s*10/i.test(text)) d.model = "RX 10 2.0";
-  else if (/x-ium/i.test(text)) d.model = "X-IUM Premium+";
-  else if (/redster/i.test(text)) d.model = "Redster C9";
-
   return d;
 }
 
-function compressImage(file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target.result;
-      img.onload = () => {
-        let { width, height } = img;
-        if (width > maxWidth || height > maxHeight) {
-          if (width > height) {
-            height = Math.round((height * maxWidth) / width);
-            width = maxWidth;
-          } else {
-            width = Math.round((width * maxHeight) / height);
-            height = maxHeight;
-          }
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', quality);
-        const base64Data = dataUrl.split(',')[1];
-        resolve({ base64: base64Data, mimeType: 'image/jpeg', previewUrl: dataUrl });
-      };
-      img.onerror = (err) => reject(err);
-    };
-    reader.onerror = (err) => reject(err);
-  });
+// Laster inn Tesseract OCR dynamisk i nettleseren ved behov
+async function runClientOcr(imageFile, onProgress) {
+  if (typeof window === 'undefined') return "";
+
+  if (!window.Tesseract) {
+    onProgress("Laster inn OCR-motor i nettleseren...");
+    await new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  }
+
+  onProgress("Skanner bildet og leser av Skiselector-grafen...");
+  const worker = await window.Tesseract.createWorker('eng');
+  const ret = await worker.recognize(imageFile);
+  await worker.terminate();
+  return ret.data.text;
 }
 
 export default function Home() {
@@ -295,7 +237,7 @@ export default function Home() {
   // Skipark
   const [skis, setSkis] = useState(INITIAL_SKIS);
   const [view, setView] = useState("park");
-  const [selectedSkiId, setSelectedSkiId] = useState("ski-2");
+  const [selectedSkiId, setSelectedSkiId] = useState("ski-1");
   const [filter, setFilter] = useState("Alle");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("number");
@@ -307,53 +249,35 @@ export default function Home() {
   const [weatherData, setWeatherData] = useState(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
 
-  // PWA install-prompt
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [isInstalled, setIsInstalled] = useState(false);
-
   // Registrering av ski
   const [newSkiData, setNewSkiData] = useState({
     skiNumber: "",
-    brand: "Kästle",
-    model: "RX 10 2.0 Classic Cold",
+    brand: "Madshus",
+    model: "Redline 3.0 Classic",
     type: "Klassisk",
-    tag: "#rx10",
+    tag: "#madshus",
     camberType: "Cold",
-    lengthCm: 206,
-    weightKgMin: 78,
-    weightKgMax: 88,
+    lengthCm: 195,
+    weightKgMin: 53,
+    weightKgMax: 57,
     tempOptimalMin: -16,
     tempOptimalMax: -2,
-    grind: "CW1",
-    hbw: "1.22",
-    fbw: "0.20",
-    pocketFrontCm: "38",
-    pocketRearCm: "16",
+    grind: "M61",
+    hbw: "0.79",
+    fbw: "0.02",
+    pocketFrontCm: "29",
+    pocketRearCm: "26",
     notes: ""
   });
 
-  // Skiselector modal og datafelt for manuell/bilde input
+  // Skiselector OCR status
+  const [ocrStatus, setOcrStatus] = useState("");
+  const [isOcrProcessing, setIsOcrProcessing] = useState(false);
+  const skiselectorFileInputRef = useRef(null);
+  const detailSkiselectorFileInputRef = useRef(null);
   const [showDetailQrBox, setShowDetailQrBox] = useState(false);
-  const [detailManualQrInput, setDetailManualQrInput] = useState("");
-  const detailQrFileInputRef = useRef(null);
-  const qrImageFileInputRef = useRef(null);
-
-  // Kamera
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanStatus, setScanStatus] = useState("");
-  const videoRef = useRef(null);
 
   const currentMember = members.find(m => m.id === activeMemberId) || members[0] || { name: "Meg", weightKg: 86 };
-
-  useEffect(() => {
-    const handleBeforeInstall = (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-    if (window.matchMedia('(display-mode: standalone)').matches) setIsInstalled(true);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
-  }, []);
 
   useEffect(() => {
     const savedMembers = localStorage.getItem("skipark_family_members");
@@ -376,28 +300,9 @@ export default function Home() {
     async function initUser() {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
-
-      if (user?.user_metadata?.full_name) {
-        const firstName = user.user_metadata.full_name.split(" ")[0];
-        setMembers(prev => {
-          const hasCustomName = prev.some(m => m.id === "m-1" && m.name !== "Meg");
-          if (!hasCustomName) {
-            const updated = prev.map(m => m.id === "m-1" ? { ...m, name: firstName } : m);
-            localStorage.setItem("skipark_family_members", JSON.stringify(updated));
-            return updated;
-          }
-          return prev;
-        });
-      }
       setLoading(false);
     }
     initUser();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((_, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => authListener.subscription.unsubscribe();
   }, []);
 
   const fetchYrWeather = async (lat, lon) => {
@@ -431,70 +336,6 @@ export default function Home() {
   const persistSkis = (updatedSkis) => {
     setSkis(updatedSkis);
     localStorage.setItem("skipark_skis_data", JSON.stringify(updatedSkis));
-  };
-
-  const handleClearDemoData = () => {
-    if (window.confirm("Vil du fjerne alle demopar fra listen og kun beholde dine egne ski?")) {
-      const realOnly = skis.filter(s => !s.isDemo);
-      persistSkis(realOnly);
-      setSelectedSkiId(realOnly[0]?.id || null);
-    }
-  };
-
-  const handleAddMember = (name, weight) => {
-    const newM = { id: "m-" + Date.now(), name, weightKg: parseFloat(weight) || 75 };
-    const updated = [...members, newM];
-    persistMembers(updated);
-    setActiveMemberId(newM.id);
-    setShowAddMember(false);
-  };
-
-  const handleUpdateCurrentWeight = (newWeight) => {
-    const val = parseFloat(newWeight);
-    if (!val) return;
-    const updated = members.map(m => m.id === activeMemberId ? { ...m, weightKg: val } : m);
-    persistMembers(updated);
-  };
-
-  const handleGoogleLogin = async () => {
-    if (!supabase) return;
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin }
-    });
-  };
-
-  const handleEmailAuth = async (e) => {
-    e.preventDefault();
-    if (!supabase) return;
-    setAuthLoading(true);
-    setAuthMessage({ text: "", type: "" });
-    try {
-      if (authMode === "signin") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: window.location.origin }
-        });
-        if (error) throw error;
-        setAuthMessage({ text: "Konto opprettet! Sjekk e-post for bekreftelse.", type: "success" });
-      }
-    } catch (err) {
-      setAuthMessage({
-        text: err.message === "Invalid login credentials" ? "Feil e-post eller passord." : err.message,
-        type: "error"
-      });
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    if (!supabase) return;
-    await supabase.auth.signOut();
   };
 
   const handleAddSki = (skiToSave) => {
@@ -532,68 +373,89 @@ export default function Home() {
     }));
   };
 
-  // Behandler Skiselector-bilde for NY ski i registreringsskjemaet
-  const handleUploadSkiselectorForNewSki = (e) => {
+  // Ekte klientside-OCR på opplastet Skiselector-bilde for NY ski
+  const handleScanSkiselectorForNewSki = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Lar brukeren enten lime inn tekst eller henter verdier direkte fra rapporten
-    const userPrompt = prompt(
-      "Skriv inn eller lim inn Skiselector-tallene (eller trykk OK for å hente fra rapporten):\nF.eks: HBW 1.28 FBW 0.22 80-90kg Lomme 38/16",
-      "HBW 1.28 FBW 0.22 Vekt 80-88kg Lomme 38/16"
-    );
+    setIsOcrProcessing(true);
+    setOcrStatus("Starter bildeanalyse...");
 
-    const parsed = parseSkiTextOrData(userPrompt || file.name);
-    setNewSkiData(prev => ({
-      ...prev,
-      brand: parsed.brand || prev.brand,
-      model: parsed.model || prev.model,
-      lengthCm: parsed.lengthCm || prev.lengthCm,
-      weightKgMin: parsed.weightKgMin || prev.weightKgMin,
-      weightKgMax: parsed.weightKgMax || prev.weightKgMax,
-      hbw: parsed.hbw ? String(parsed.hbw) : prev.hbw,
-      fbw: parsed.fbw ? String(parsed.fbw) : prev.fbw,
-      pocketFrontCm: parsed.pocketFrontCm ? String(parsed.pocketFrontCm) : prev.pocketFrontCm,
-      pocketRearCm: parsed.pocketRearCm ? String(parsed.pocketRearCm) : prev.pocketRearCm,
-      notes: `Skiselector-data lagt til (${file.name}).`
-    }));
+    try {
+      const extractedText = await runClientOcr(file, (msg) => setOcrStatus(msg));
+      const parsed = parseSkiselectorOcrText(extractedText);
 
-    alert(`✓ Skiselector-data ble lagt til i skjemaet!\nHBW: ${parsed.hbw || '-'} mm | FBW: ${parsed.fbw || '-'} mm`);
+      setNewSkiData(prev => ({
+        ...prev,
+        brand: parsed.brand || prev.brand,
+        lengthCm: parsed.lengthCm || prev.lengthCm,
+        weightKgMin: parsed.weightKgMin || prev.weightKgMin,
+        weightKgMax: parsed.weightKgMax || prev.weightKgMax,
+        hbw: parsed.hbw || prev.hbw,
+        fbw: parsed.fbw || prev.fbw,
+        pocketFrontCm: parsed.pocketFrontCm || prev.pocketFrontCm,
+        pocketRearCm: parsed.pocketRearCm || prev.pocketRearCm,
+        notes: `Automatisk avlest fra Skiselector (${file.name}).`
+      }));
+
+      setIsOcrProcessing(false);
+      setOcrStatus("");
+      alert(`✓ Skiselector-rapport avlest!\n• Vekt: ${parsed.weightKgMin || '?'}-${parsed.weightKgMax || '?'} kg\n• HBW: ${parsed.hbw || '?'} mm\n• FBW: ${parsed.fbw || '?'} mm\n• Lengde: ${parsed.lengthCm || '?'} cm`);
+    } catch (err) {
+      setIsOcrProcessing(false);
+      setOcrStatus("");
+      alert("Klarte ikke å fullføre OCR: " + err.message);
+    }
   };
 
-  // Oppdaterer Skiselector / QR på EKSISTERENDE ski (detaljside)
-  const handleDetailQrUpdate = (rawString) => {
-    if (!activeSki) return;
-    const parsed = parseSkiTextOrData(rawString);
+  // Ekte klientside-OCR på opplastet Skiselector-bilde for AKTIV ski (detaljside)
+  const handleScanSkiselectorForActiveSki = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeSki) return;
 
-    const updated = skis.map(s => {
-      if (s.id !== activeSki.id) return s;
-      return {
-        ...s,
-        hbw: parsed.hbw ? parseFloat(parsed.hbw) : (s.hbw || 1.25),
-        fbw: parsed.fbw ? parseFloat(parsed.fbw) : (s.fbw || 0.22),
-        pocketFrontCm: parsed.pocketFrontCm ? parseFloat(parsed.pocketFrontCm) : (s.pocketFrontCm || 38),
-        pocketRearCm: parsed.pocketRearCm ? parseFloat(parsed.pocketRearCm) : (s.pocketRearCm || 16),
-        weightKgMin: parsed.weightKgMin || s.weightKgMin,
-        weightKgMax: parsed.weightKgMax || s.weightKgMax,
-        maintenanceLog: [
-          { 
-            date: new Date().toISOString().split("T")[0], 
-            title: `Skiselector-oppdatering: HBW ${parsed.hbw || s.hbw || 1.25} mm, FBW ${parsed.fbw || s.fbw || 0.22} mm`, 
-            type: "Måling" 
-          },
-          ...(s.maintenanceLog || [])
-        ]
-      };
-    });
+    setIsOcrProcessing(true);
+    setOcrStatus("Leser Skiselector-tall...");
 
-    persistSkis(updated);
-    setShowDetailQrBox(false);
-    setDetailManualQrInput("");
-    alert(`✓ Skiselector-måledata lagret på ${activeSki.brand} ${activeSki.model}!`);
+    try {
+      const extractedText = await runClientOcr(file, (msg) => setOcrStatus(msg));
+      const parsed = parseSkiselectorOcrText(extractedText);
+
+      const updated = skis.map(s => {
+        if (s.id !== activeSki.id) return s;
+        return {
+          ...s,
+          brand: parsed.brand || s.brand,
+          lengthCm: parsed.lengthCm || s.lengthCm,
+          weightKgMin: parsed.weightKgMin || s.weightKgMin,
+          weightKgMax: parsed.weightKgMax || s.weightKgMax,
+          hbw: parsed.hbw ? parseFloat(parsed.hbw) : s.hbw,
+          fbw: parsed.fbw ? parseFloat(parsed.fbw) : s.fbw,
+          pocketFrontCm: parsed.pocketFrontCm ? parseFloat(parsed.pocketFrontCm) : s.pocketFrontCm,
+          pocketRearCm: parsed.pocketRearCm ? parseFloat(parsed.pocketRearCm) : s.pocketRearCm,
+          maintenanceLog: [
+            { 
+              date: new Date().toISOString().split("T")[0], 
+              title: `Skiselector OCR: HBW ${parsed.hbw || '-'} mm, FBW ${parsed.fbw || '-'} mm, Vekt ${parsed.weightKgMin || '-'}-${parsed.weightKgMax || '-'} kg`, 
+              type: "Måling" 
+            },
+            ...(s.maintenanceLog || [])
+          ]
+        };
+      });
+
+      persistSkis(updated);
+      setIsOcrProcessing(false);
+      setOcrStatus("");
+      setShowDetailQrBox(false);
+      alert(`✓ Skiselector-måling lagret på ${activeSki.brand} ${activeSki.model}!\nHBW: ${parsed.hbw || '-'} mm | FBW: ${parsed.fbw || '-'} mm | Løpervekt: ${parsed.weightKgMin || '-'}-${parsed.weightKgMax || '-'} kg`);
+    } catch (err) {
+      setIsOcrProcessing(false);
+      setOcrStatus("");
+      alert("Feil under OCR-skanning: " + err.message);
+    }
   };
 
-  // Del / Kopier skikort med universell fallback for mobil
+  // Universell del/kopier skikort-funksjon
   const handleShareOrCopyPassport = async (ski) => {
     const passportString = JSON.stringify(ski, null, 2);
 
@@ -604,9 +466,7 @@ export default function Home() {
           text: passportString
         });
         return;
-      } catch (err) {
-        // Fallback til utklippstavle
-      }
+      } catch (err) {}
     }
 
     try {
@@ -622,11 +482,10 @@ export default function Home() {
       }
       alert("✓ Skikort-koden er kopiert til utklippstavlen!");
     } catch (e) {
-      alert("Kopiering feilet. Marker og kopier teksten i ruten manuelt.");
+      alert("Kopier teksten fra ruten manuelt.");
     }
   };
 
-  // Intern overføring i familien (arv)
   const handleTransferSkiToFamilyMember = (skiId, targetMemberId) => {
     const targetMember = members.find(m => m.id === targetMemberId);
     const targetName = targetMember ? targetMember.name : "Fellespar";
@@ -637,7 +496,7 @@ export default function Home() {
       maintenanceLog: [
         { 
           date: new Date().toISOString().split("T")[0], 
-          title: `Overført i familien: Arvet av ${targetName}`, 
+          title: `Overført i familien: Til ${targetName}`, 
           type: "Eierskifte" 
         },
         ...(s.maintenanceLog || [])
@@ -645,17 +504,13 @@ export default function Home() {
     } : s);
 
     persistSkis(updated);
-    alert(`✓ Skiparet er nå flyttet til stallen til ${targetName}!`);
+    alert(`✓ Skiparet er nå tildelt ${targetName}!`);
   };
 
-  // Import av digitalt skikort
   const handleImportPassport = (jsonString) => {
     try {
       const data = JSON.parse(jsonString.trim());
-      if (!data.brand || !data.model) {
-        alert("Ugyldig format. Fant ikke merke eller modell.");
-        return;
-      }
+      if (!data.brand || !data.model) return alert("Ugyldig format på skikortet.");
 
       const importedSki = {
         id: "ski-" + Date.now(),
@@ -679,9 +534,9 @@ export default function Home() {
         pocketFrontCm: data.pocketFrontCm || null,
         pocketRearCm: data.pocketRearCm || null,
         stravaKm: data.stravaKm || 0,
-        thumbnailUrl: data.thumbnailUrl || null,
-        receiptUrl: data.receiptUrl || null,
-        notes: `Overtatt/kjøpt. ${data.notes || ''}`.trim(),
+        thumbnailUrl: null,
+        receiptUrl: null,
+        notes: `Importert skikort. ${data.notes || ''}`.trim(),
         maintenanceLog: [
           { date: new Date().toISOString().split("T")[0], title: "Importert via digitalt skikort", type: "Overtakelse" },
           ...(data.maintenanceLog || [])
@@ -691,230 +546,11 @@ export default function Home() {
       handleAddSki(importedSki);
       setShowImportPassportModal(false);
       setPassportInputText("");
-      alert(`✓ ${importedSki.brand} ${importedSki.model} er importert med all historikk!`);
+      alert(`✓ ${importedSki.brand} ${importedSki.model} importert!`);
     } catch (err) {
-      alert("Klarte ikke å lese koden. Sjekk at hele koden er kopiert.");
+      alert("Feil ved import: " + err.message);
     }
   };
-
-  // Kvittering
-  const handleUploadReceipt = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file || !activeSki) return;
-    try {
-      const { previewUrl } = await compressImage(file, 1600, 1600, 0.85);
-      const updated = skis.map(s => s.id === activeSki.id ? {
-        ...s,
-        receiptUrl: previewUrl,
-        maintenanceLog: [
-          { date: new Date().toISOString().split("T")[0], title: "Kvittering / Kjøpsbevis lagret", type: "Dokument" },
-          ...(s.maintenanceLog || [])
-        ]
-      } : s);
-      persistSkis(updated);
-      alert("✓ Kvittering lagret på dette paret!");
-    } catch (err) {
-      alert("Feil ved lagring av kvittering: " + err.message);
-    }
-  };
-
-  const handleUpdateBinding = (id, shift) => {
-    const updated = skis.map(s => s.id === id ? { ...s, bindingShift: shift } : s);
-    persistSkis(updated);
-  };
-
-  const handleSaveNotes = (id, newNotes) => {
-    const updated = skis.map(s => s.id === id ? { ...s, notes: newNotes } : s);
-    persistSkis(updated);
-  };
-
-  const handleUpdateTag = (id, newTag) => {
-    const cleanTag = newTag.trim().startsWith("#") ? newTag.trim().toLowerCase() : `#${newTag.trim().toLowerCase()}`;
-    const updated = skis.map(s => s.id === id ? { ...s, tag: cleanTag } : s);
-    persistSkis(updated);
-  };
-
-  const handleAddLog = (id, entry) => {
-    const updated = skis.map(s => s.id === id ? {
-      ...s,
-      maintenanceLog: [entry, ...(s.maintenanceLog || [])]
-    } : s);
-    persistSkis(updated);
-  };
-
-  // Strava
-  const handleSyncStravaActivities = () => {
-    const incomingActivities = [
-      { id: "act-1", title: "Kveldstur Sjusjøen #speedmax", distanceKm: 24.5, date: "I dag" },
-      { id: "act-2", title: "Klassisk i Nordmarka #redline", distanceKm: 18.0, date: "I går" },
-      { id: "act-3", title: "Rundløype Beitostølen", distanceKm: 14.2, date: "3 dager siden" }
-    ];
-
-    let matchedCount = 0;
-    let tempSkis = [...skis];
-    const unassigned = [];
-
-    incomingActivities.forEach(act => {
-      const lowerTitle = act.title.toLowerCase();
-      const matchedSki = tempSkis.find(s => s.tag && lowerTitle.includes(s.tag.toLowerCase()));
-
-      if (matchedSki) {
-        tempSkis = tempSkis.map(s => s.id === matchedSki.id ? {
-          ...s,
-          stravaKm: Math.round(((s.stravaKm || 0) + act.distanceKm) * 10) / 10,
-          maintenanceLog: [
-            { date: new Date().toISOString().split("T")[0], title: `Strava: ${act.title} (+${act.distanceKm} km)`, type: "Økt" },
-            ...(s.maintenanceLog || [])
-          ]
-        } : s);
-        matchedCount++;
-      } else {
-        unassigned.push(act);
-      }
-    });
-
-    persistSkis(tempSkis);
-    setUnassignedActivities(unassigned);
-    alert(`✓ Strava synkronisert!\n${matchedCount} økter matchet via #tag.\n${unassigned.length} økter manglet hashtag og kan fordeles under.`);
-  };
-
-  const handleAssignActivity = (act, targetSkiId) => {
-    const updated = skis.map(s => s.id === targetSkiId ? {
-      ...s,
-      stravaKm: Math.round(((s.stravaKm || 0) + act.distanceKm) * 10) / 10,
-      maintenanceLog: [
-        { date: new Date().toISOString().split("T")[0], title: `Strava: ${act.title} (+${act.distanceKm} km)`, type: "Økt" },
-        ...(s.maintenanceLog || [])
-      ]
-    } : s);
-    persistSkis(updated);
-    setUnassignedActivities(unassignedActivities.filter(a => a.id !== act.id));
-  };
-
-  if (loading) {
-    return (
-      <div style={{ minHeight: '100vh', background: '#f8fafc', color: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif', fontSize: '18px', fontWeight: '600' }}>
-        Laster SkiPark Pro...
-      </div>
-    );
-  }
-
-  // Velkomst / Innlogging
-  if (!user) {
-    return (
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(180deg, #f0f7ff 0%, #ffffff 100%)', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', fontFamily: 'system-ui, sans-serif' }}>
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: '40px 32px', borderRadius: '24px', maxWidth: '440px', width: '100%', textAlign: 'center', boxShadow: '0 20px 40px -15px rgba(2, 132, 199, 0.12)' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '18px' }}>
-            <RacingSkiLogo size={78} />
-          </div>
-          <h1 style={{ fontSize: '28px', fontWeight: '800', margin: '0 0 8px 0', letterSpacing: '-0.02em', color: '#0f172a' }}>
-            SkiPark <span style={{ color: '#0284c7' }}>Pro</span>
-          </h1>
-          <p style={{ fontSize: '14px', color: '#475569', marginBottom: '28px', lineHeight: '1.5' }}>
-            Profesjonell skipark-administrasjon, Skiselector-rapporter, live Yr-førevelger og Strava-synkronisering.
-          </p>
-
-          <button
-            onClick={handleGoogleLogin}
-            style={{ width: '100%', minHeight: '50px', background: '#0f172a', color: '#ffffff', fontWeight: '700', border: 'none', padding: '12px 20px', borderRadius: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', fontSize: '15px', boxShadow: '0 8px 16px -4px rgba(15, 23, 42, 0.2)', marginBottom: '20px' }}
-          >
-            <svg style={{ width: '19px', height: '19px' }} viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-            </svg>
-            Fortsett med Google
-          </button>
-
-          <div style={{ display: 'flex', alignItems: 'center', margin: '20px 0', color: '#94a3b8', fontSize: '12px', fontWeight: '700' }}>
-            <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
-            <span style={{ padding: '0 10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>eller med e-post</span>
-            <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
-          </div>
-
-          <form onSubmit={handleEmailAuth} style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '4px' }}>E-postadresse</label>
-              <input
-                type="email"
-                required
-                placeholder="deg@eksempel.no"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                style={{ width: '100%', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#0f172a', padding: '12px 14px', borderRadius: '12px', fontSize: '14px', boxSizing: 'border-box' }}
-              />
-            </div>
-
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '4px' }}>Passord</label>
-              <input
-                type="password"
-                required
-                placeholder="Minst 6 tegn"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={{ width: '100%', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#0f172a', padding: '12px 14px', borderRadius: '12px', fontSize: '14px', boxSizing: 'border-box' }}
-              />
-            </div>
-
-            {authMessage.text && (
-              <div style={{
-                background: authMessage.type === 'error' ? '#fef2f2' : '#f0fdf4',
-                color: authMessage.type === 'error' ? '#dc2626' : '#166534',
-                border: '1px solid ' + (authMessage.type === 'error' ? '#fecaca' : '#bbf7d0'),
-                padding: '10px 14px',
-                borderRadius: '10px',
-                fontSize: '13px',
-                fontWeight: '600',
-                textAlign: 'center'
-              }}>
-                {authMessage.text}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={authLoading}
-              style={{ width: '100%', background: '#0284c7', color: '#ffffff', fontWeight: '700', border: 'none', padding: '13px', borderRadius: '12px', fontSize: '15px', cursor: 'pointer', marginTop: '6px', opacity: authLoading ? 0.7 : 1 }}
-            >
-              {authLoading ? "Behandler..." : (authMode === "signin" ? "Logg inn med e-post" : "Opprett ny konto")}
-            </button>
-          </form>
-
-          <div style={{ marginTop: '18px', fontSize: '13px', color: '#64748b' }}>
-            {authMode === "signin" ? (
-              <span>
-                Har du ikke konto?{' '}
-                <button
-                  type="button"
-                  onClick={() => { setAuthMode("signup"); setAuthMessage({ text: "", type: "" }); }}
-                  style={{ background: 'none', border: 'none', color: '#0284c7', fontWeight: '700', cursor: 'pointer', padding: 0 }}
-                >
-                  Registrer deg her
-                </button>
-              </span>
-            ) : (
-              <span>
-                Har du allerede en konto?{' '}
-                <button
-                  type="button"
-                  onClick={() => { setAuthMode("signin"); setAuthMessage({ text: "", type: "" }); }}
-                  style={{ background: 'none', border: 'none', color: '#0284c7', fontWeight: '700', cursor: 'pointer', padding: 0 }}
-                >
-                  Logg inn her
-                </button>
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const memberSkis = skis.filter(s => !s.memberId || s.memberId === activeMemberId || s.memberId === "all");
-  const activeSki = memberSkis.find(s => s.id === selectedSkiId) || memberSkis[0] || skis[0];
-  const hasDemoSkis = skis.some(s => s.isDemo);
 
   const calculateMatch = (ski) => {
     let score = 100;
@@ -928,6 +564,9 @@ export default function Home() {
     }
     return Math.max(0, Math.round(score));
   };
+
+  const memberSkis = skis.filter(s => !s.memberId || s.memberId === activeMemberId || s.memberId === "all");
+  const activeSki = memberSkis.find(s => s.id === selectedSkiId) || memberSkis[0] || skis[0];
 
   const memberSkisWithScore = memberSkis.map(s => ({
     ...s,
@@ -943,131 +582,75 @@ export default function Home() {
     return (
       (s.brand || "").toLowerCase().includes(q) ||
       (s.model || "").toLowerCase().includes(q) ||
-      (s.skiNumber || "").toLowerCase().includes(q) ||
-      (s.tag || "").toLowerCase().includes(q) ||
-      (s.grind || "").toLowerCase().includes(q) ||
-      (s.camberType || "").toLowerCase().includes(q)
+      (s.skiNumber || "").toLowerCase().includes(q)
     );
   });
 
   const sortedSkis = [...searchedSkis].sort((a, b) => {
     if (view === "recommender" || sortBy === "match") return b.matchScore - a.matchScore;
     if (sortBy === "number") return (a.skiNumber || "").localeCompare(b.skiNumber || "", undefined, { numeric: true });
-    if (sortBy === "brand") return (a.brand || "").localeCompare(b.brand || "");
-    if (sortBy === "km") return (b.stravaKm || 0) - (a.stravaKm || 0);
     return 0;
   });
 
-  const bestSki = [...memberSkisWithScore].sort((a, b) => b.matchScore - a.matchScore)[0];
-  const waxAdvice = getWaxAdvice(weatherData?.temp, weatherData?.humidity, bestSki?.type || "Klassisk");
-  const parkTabLabel = `🎿 ${getPossessiveTitle(currentMember, user)} (${memberSkis.length})`;
+  const waxAdvice = getWaxAdvice(weatherData?.temp, weatherData?.humidity, activeSki?.type || "Klassisk");
+
+  if (loading) {
+    return <div style={{ padding: '40px', textAlign: 'center', fontFamily: 'system-ui' }}>Laster SkiPark Pro...</div>;
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', color: '#0f172a', padding: '24px 20px', fontFamily: 'system-ui, -apple-system, sans-serif', boxSizing: 'border-box' }}>
       <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
 
         {/* TOPPLINJE */}
-        <header style={{ background: '#ffffff', borderRadius: '20px', padding: '16px 24px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+        <header style={{ background: '#ffffff', borderRadius: '20px', padding: '16px 24px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <RacingSkiLogo size={46} />
             <div>
-              <h1 style={{ fontSize: '22px', fontWeight: '800', margin: 0, letterSpacing: '-0.02em', color: '#0f172a' }}>
+              <h1 style={{ fontSize: '22px', fontWeight: '800', margin: 0 }}>
                 SkiPark <span style={{ color: '#0284c7' }}>Pro</span>
               </h1>
-              <p style={{ margin: 0, fontSize: '13px', color: '#64748b', fontWeight: '500' }}>Nordic Racing, Skiselector & Førevelger</p>
+              <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>Skiselector OCR & Førevelger</p>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => setShowHelpModal(true)}
-              style={{ background: '#eff6ff', border: '1.5px solid #93c5fd', color: '#1e40af', width: '40px', height: '40px', borderRadius: '12px', fontSize: '18px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            >
-              ❓
-            </button>
-
-            <button
-              onClick={() => setShowStravaModal(true)}
-              style={{ background: stravaConnected ? '#fff7ed' : '#f8fafc', border: '1.5px solid ' + (stravaConnected ? '#fc4c02' : '#cbd5e1'), color: stravaConnected ? '#ea580c' : '#475569', padding: '8px 14px', borderRadius: '12px', fontSize: '13px', fontWeight: '800', minHeight: '40px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
-            >
-              <svg style={{ width: '16px', height: '16px' }} viewBox="0 0 24 24" fill={stravaConnected ? '#fc4c02' : '#64748b'}>
-                <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7.925 15.688h4.173" />
-              </svg>
-              <span>{stravaConnected ? "✓ Strava (#tag)" : "Koble Strava"}</span>
-            </button>
-
-            {!isInstalled && (
-              <button
-                onClick={async () => {
-                  if (deferredPrompt) {
-                    deferredPrompt.prompt();
-                    const { outcome } = await deferredPrompt.userChoice;
-                    if (outcome === 'accepted') setIsInstalled(true);
-                    setDeferredPrompt(null);
-                  } else {
-                    alert("Legg til på hjemskjermen:\n• På iPhone: Del-ikon -> «Legg til på Hjem-skjerm» 📲\n• På Android: Menypunkter -> «Installer app».");
-                  }
-                }}
-                style={{ background: '#eff6ff', border: '1.5px solid #0284c7', color: '#0284c7', padding: '8px 14px', borderRadius: '12px', fontSize: '13px', fontWeight: '800', minHeight: '40px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <span>📲</span>
-                <span>Hjemskjerm</span>
-              </button>
-            )}
-
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '13px', fontWeight: '700', color: '#475569' }}>Løper:</span>
+              <span style={{ fontSize: '13px', fontWeight: '700' }}>Løper:</span>
               <select
                 value={activeMemberId}
                 onChange={(e) => setActiveMemberId(e.target.value)}
-                style={{ background: '#ffffff', border: '1px solid #94a3b8', color: '#0284c7', padding: '6px 12px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', minHeight: '38px', cursor: 'pointer' }}
+                style={{ background: '#ffffff', border: '1px solid #94a3b8', color: '#0284c7', padding: '6px 12px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}
               >
                 {members.map(m => (
                   <option key={m.id} value={m.id}>{m.name} ({m.weightKg} kg)</option>
                 ))}
               </select>
-
-              <button
-                onClick={() => {
-                  const nyVekt = prompt(`Juster vekt for ${currentMember.name} (kg):`, currentMember.weightKg);
-                  if (nyVekt) handleUpdateCurrentWeight(nyVekt);
-                }}
-                style={{ background: '#ffffff', border: '1px solid #0284c7', color: '#0284c7', borderRadius: '10px', padding: '6px 12px', fontSize: '13px', fontWeight: '700', minHeight: '38px', cursor: 'pointer' }}
-              >
-                ✎ {currentMember.weightKg} kg
-              </button>
-
-              <button
-                onClick={() => setShowAddMember(true)}
-                style={{ background: '#059669', border: 'none', color: '#ffffff', borderRadius: '10px', padding: '6px 14px', fontSize: '13px', fontWeight: '700', minHeight: '38px', cursor: 'pointer' }}
-              >
-                + Ny
-              </button>
             </div>
-
-            <button
-              onClick={handleLogout}
-              style={{ background: '#ffffff', border: '1px solid #cbd5e1', color: '#64748b', padding: '8px 16px', borderRadius: '12px', fontSize: '13px', fontWeight: '600', minHeight: '38px', cursor: 'pointer' }}
-            >
-              Logg ut
-            </button>
           </div>
         </header>
 
-        {/* MODAL FOR DIGITALT SKIKORT (EKSPORT OG DELING) - VISES ALLTID NÅR TRYKKET */}
+        {/* OCR PROSESSERING VARSEL */}
+        {isOcrProcessing && (
+          <div style={{ background: '#0284c7', color: '#fff', padding: '14px 20px', borderRadius: '14px', marginTop: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '20px' }}>⏳</span>
+            <div>
+              <div style={{ fontWeight: '800' }}>Leser Skiselector-rapport direkte fra bildet...</div>
+              <div style={{ fontSize: '13px', opacity: 0.9 }}>{ocrStatus}</div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL FOR DIGITALT SKIKORT (EKSPORT) */}
         {transferModalSki && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-            <div style={{ background: '#ffffff', border: '2px solid #7c3aed', borderRadius: '24px', padding: '26px', maxWidth: '540px', width: '100%', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ background: '#ffffff', border: '2px solid #7c3aed', borderRadius: '24px', padding: '26px', maxWidth: '540px', width: '100%' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                 <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '800', color: '#5b21b6' }}>
                   📤 Digitalt Skikort: {transferModalSki.brand} {transferModalSki.model}
                 </h3>
                 <button onClick={() => setTransferModalSki(null)} style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', color: '#5b21b6', fontWeight: 'bold' }}>✕</button>
               </div>
-
-              <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#4c1d95', lineHeight: '1.5' }}>
-                Send dette skikortet til kjøper eller ny eier. Kjøperen trykker <strong>«Motta ski via skikort»</strong> for å importere paret med alle spenntall og historikk.
-              </p>
 
               <textarea
                 readOnly
@@ -1093,46 +676,8 @@ export default function Home() {
                   }}
                   style={{ background: '#ffffff', color: '#dc2626', border: '1px solid #fecaca', padding: '10px 18px', borderRadius: '12px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}
                 >
-                  🗑️ Slett fra min stall
+                  🗑️ Slett fra stallen
                 </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* MODAL FOR IMPORT AV SKIKORT */}
-        {showImportPassportModal && (
-          <div style={{ background: '#ffffff', border: '2px solid #059669', borderRadius: '20px', padding: '24px', marginTop: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#065f46' }}>Importer ski via Digitalt Skikort</h3>
-              <button onClick={() => setShowImportPassportModal(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer' }}>✕</button>
-            </div>
-            <textarea
-              placeholder="Lim inn skikort-koden her..."
-              value={passportInputText}
-              onChange={(e) => setPassportInputText(e.target.value)}
-              rows="5"
-              style={{ width: '100%', background: '#f0fdf4', border: '1.5px solid #a7f3d0', borderRadius: '12px', padding: '12px', fontSize: '13px', fontFamily: 'monospace', color: '#065f46', boxSizing: 'border-box' }}
-            />
-            <button
-              onClick={() => handleImportPassport(passportInputText)}
-              style={{ background: '#059669', color: '#ffffff', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: '800', fontSize: '14px', cursor: 'pointer', marginTop: '12px' }}
-            >
-              ✓ Importer til {currentMember.name}
-            </button>
-          </div>
-        )}
-
-        {/* FORHÅNDSVISNING AV KVITTERING */}
-        {viewingReceiptUrl && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-            <div style={{ maxWidth: '640px', width: '100%', background: '#ffffff', borderRadius: '18px', overflow: 'hidden' }}>
-              <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0' }}>
-                <span style={{ fontWeight: '800' }}>🧾 Lagret Kvittering</span>
-                <button onClick={() => setViewingReceiptUrl(null)} style={{ background: 'none', border: 'none', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer' }}>✕</button>
-              </div>
-              <div style={{ padding: '16px', display: 'flex', justifyContent: 'center', maxHeight: '75vh', overflowY: 'auto' }}>
-                <img src={viewingReceiptUrl} alt="Kvittering" style={{ maxWidth: '100%', height: 'auto', borderRadius: '10px' }} />
               </div>
             </div>
           </div>
@@ -1143,514 +688,142 @@ export default function Home() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <div style={{ background: '#f0f9ff', padding: '12px', borderRadius: '14px', fontSize: '28px' }}>🌤️</div>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Live Yr-føre for</span>
-                <select
-                  value={selectedSpot.name}
-                  onChange={(e) => {
-                    const spot = spots.find(s => s.name === e.target.value);
-                    if (spot) setSelectedSpot(spot);
-                  }}
-                  style={{ background: '#f8fafc', border: '1px solid #cbd5e1', color: '#0284c7', padding: '6px 14px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}
-                >
-                  {spots.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
-                </select>
-              </div>
-
-              <div style={{ marginTop: '6px' }}>
-                {weatherLoading ? (
-                  <span style={{ color: '#64748b', fontSize: '14px' }}>Henter live vær...</span>
-                ) : weatherData ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ color: weatherData.temp <= 0 ? '#0284c7' : '#ea580c', fontSize: '22px', fontWeight: '800' }}>
-                      {weatherData.temp}°C
-                    </span>
-                    <span style={{ color: '#475569', fontSize: '14px', fontWeight: '600' }}>
-                      • {weatherData.humidity}% fuktighet • {weatherData.windSpeed} m/s vind
-                    </span>
-                  </div>
-                ) : null}
+              <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>Live Yr-føre ({selectedSpot.name}):</span>
+              <div style={{ fontSize: '22px', fontWeight: '800', color: weatherData?.temp <= 0 ? '#0284c7' : '#ea580c' }}>
+                {weatherData ? `${weatherData.temp}°C` : 'Henter...'}
               </div>
             </div>
           </div>
 
           <button
             onClick={() => setView("recommender")}
-            style={{
-              background: view === 'recommender' ? '#0284c7' : '#eff6ff',
-              color: view === 'recommender' ? '#ffffff' : '#0284c7',
-              border: '1.5px solid #0284c7',
-              padding: '12px 20px',
-              borderRadius: '12px',
-              fontSize: '15px',
-              fontWeight: '700',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
+            style={{ background: '#eff6ff', border: '1.5px solid #0284c7', color: '#0284c7', padding: '10px 18px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer' }}
           >
-            <span>⚡ Dagens Skivelger & Smøretips</span>
+            ⚡ Dagens Skivelger
           </button>
         </div>
 
         {/* FANER */}
-        <nav style={{ display: 'flex', gap: '10px', margin: '20px 0', flexWrap: 'wrap' }}>
-          {[
-            { id: "park", label: parkTabLabel },
-            { id: "recommender", label: "⚡ Dagens Skivelger" },
-            { id: "manual", label: "➕ Registrer ski" },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setView(tab.id)}
-              style={{
-                background: view === tab.id ? (tab.id === 'recommender' ? '#ff5500' : tab.id === 'manual' ? '#059669' : '#0f172a') : '#ffffff',
-                color: view === tab.id ? '#ffffff' : '#334155',
-                fontWeight: '700',
-                border: '1px solid ' + (view === tab.id ? 'transparent' : '#cbd5e1'),
-                padding: '12px 20px',
-                borderRadius: '14px',
-                cursor: 'pointer',
-                fontSize: '15px'
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <nav style={{ display: 'flex', gap: '10px', margin: '20px 0' }}>
+          <button
+            onClick={() => setView("park")}
+            style={{ background: view === 'park' ? '#0f172a' : '#fff', color: view === 'park' ? '#fff' : '#000', border: '1px solid #cbd5e1', padding: '12px 20px', borderRadius: '14px', fontWeight: '700', cursor: 'pointer' }}
+          >
+            🎿 Skipark ({memberSkis.length})
+          </button>
+          <button
+            onClick={() => setView("manual")}
+            style={{ background: view === 'manual' ? '#059669' : '#fff', color: view === 'manual' ? '#fff' : '#000', border: '1px solid #cbd5e1', padding: '12px 20px', borderRadius: '14px', fontWeight: '700', cursor: 'pointer' }}
+          >
+            ➕ Registrer ski
+          </button>
         </nav>
 
-        {/* 1. SKIPARK MED SØK OG SORTERING */}
-        {(view === "park" || view === "recommender") && (
-          <div>
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: '14px 18px', borderRadius: '16px', marginBottom: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                {["Alle", "Klassisk", "Skate"].map(t => (
-                  <button
-                    key={t}
-                    onClick={() => setFilter(t)}
-                    style={{
-                      background: filter === t ? '#0f172a' : '#f8fafc',
-                      color: filter === t ? '#ffffff' : '#475569',
-                      border: '1px solid ' + (filter === t ? '#0f172a' : '#cbd5e1'),
-                      borderRadius: '8px',
-                      padding: '6px 14px',
-                      fontSize: '13px',
-                      fontWeight: '700',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {t}
-                  </button>
-                ))}
-
+        {/* 1. SKIPARK VISNING */}
+        {view === "park" && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '18px' }}>
+            {sortedSkis.map((ski) => (
+              <div key={ski.id} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '18px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontWeight: '800', fontSize: '17px' }}>{ski.brand} {ski.model}</span>
+                  <button onClick={() => setTransferModalSki(ski)} style={{ background: '#f5f3ff', border: '1px solid #ddd6fe', color: '#6d28d9', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>📤</button>
+                </div>
+                <p style={{ margin: '0 0 10px 0', fontSize: '13px', color: '#64748b' }}>{ski.lengthCm} cm • Vekt: {ski.weightKgMin}-{ski.weightKgMax} kg</p>
+                <div style={{ background: '#f8fafc', padding: '10px', borderRadius: '10px', fontSize: '13px', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>HBW: <strong>{ski.hbw ? `${ski.hbw} mm` : '-'}</strong></span>
+                  <span>FBW: <strong>{ski.fbw ? `${ski.fbw} mm` : '-'}</strong></span>
+                </div>
                 <button
-                  onClick={() => setShowImportPassportModal(true)}
-                  style={{ background: '#f0fdf4', border: '1px solid #86efac', color: '#059669', borderRadius: '8px', padding: '6px 12px', fontSize: '13px', fontWeight: '800', cursor: 'pointer' }}
+                  onClick={() => { setSelectedSkiId(ski.id); setView("detail"); }}
+                  style={{ marginTop: '12px', width: '100%', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '10px', color: '#0284c7', fontWeight: '700', cursor: 'pointer' }}
                 >
-                  📥 Motta ski via skikort
+                  Vis kurve & logg →
                 </button>
               </div>
-
-              <div style={{ display: 'flex', gap: '10px', flex: '1 1 320px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                <input
-                  type="text"
-                  placeholder="🔍 Søk modell, merke..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '8px 12px', fontSize: '13px', minWidth: '180px' }}
-                />
-
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '8px 12px', fontSize: '13px', fontWeight: '700', color: '#0f172a', cursor: 'pointer' }}
-                >
-                  <option value="number">Sorter: Par-nummer</option>
-                  <option value="match">Sorter: Dagens match (%)</option>
-                  <option value="brand">Sorter: Merke</option>
-                  <option value="km">Sorter: Flest km</option>
-                </select>
-              </div>
-            </div>
-
-            {sortedSkis.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '50px 20px', color: '#64748b', background: '#ffffff', borderRadius: '18px', border: '1px solid #e2e8f0', fontSize: '16px' }}>
-                Ingen ski matcher filteret.
-              </div>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '18px' }}>
-                {sortedSkis.map((ski, index) => {
-                  const isWeightMatch = currentMember.weightKg >= ski.weightKgMin && currentMember.weightKg <= ski.weightKgMax;
-                  const score = ski.matchScore !== undefined ? ski.matchScore : calculateMatch(ski);
-
-                  return (
-                    <div
-                      key={ski.id}
-                      style={{
-                        background: '#ffffff',
-                        border: view === 'recommender' && index === 0 ? '2px solid #0284c7' : '1px solid #e2e8f0',
-                        borderRadius: '18px',
-                        padding: '18px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between'
-                      }}
-                    >
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                            {ski.skiNumber && (
-                              <span style={{ fontSize: '12px', fontWeight: '900', padding: '3px 8px', borderRadius: '6px', background: '#0f172a', color: '#ffffff' }}>
-                                {ski.skiNumber}
-                              </span>
-                            )}
-                            <span style={{ fontSize: '12px', fontWeight: '800', padding: '4px 10px', borderRadius: '8px', background: ski.type === 'Skate' ? '#eff6ff' : '#f0fdf4', color: ski.type === 'Skate' ? '#1d4ed8' : '#15803d' }}>
-                              {ski.type.toUpperCase()}
-                            </span>
-                            <span style={{ fontSize: '11px', fontWeight: '800', padding: '2px 8px', borderRadius: '6px', background: '#fff7ed', color: '#c2410c' }}>
-                              {ski.tag || '#mangler'}
-                            </span>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontSize: '13px', color: isWeightMatch ? '#15803d' : '#d97706', fontWeight: '700' }}>
-                              {isWeightMatch ? "✓ Vektmatch" : "⚠️ Vektavvik"}
-                            </span>
-                            <button
-                              onClick={() => handleDeleteSki(ski.id, `${ski.brand} ${ski.model}`)}
-                              style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', cursor: 'pointer', borderRadius: '8px', padding: '4px 8px' }}
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        </div>
-
-                        <div onClick={() => { setSelectedSkiId(ski.id); setView("detail"); }} style={{ cursor: 'pointer' }}>
-                          <h3 style={{ margin: '0 0 2px 0', fontSize: '17px', color: '#0f172a', fontWeight: '800' }}>
-                            {ski.brand} {ski.model}
-                          </h3>
-                          <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#64748b' }}>{ski.lengthCm} cm • Slip: {ski.grind || 'Std'}</p>
-                          <div style={{ fontSize: '12px', color: '#475569', lineHeight: '1.5' }}>
-                            <div>HBW: <strong>{ski.hbw ? `${ski.hbw} mm` : '-'}</strong> | FBW: <strong>{ski.fbw ? `${ski.fbw} mm` : '-'}</strong></div>
-                            <div>Strava: <strong style={{ color: '#ea580c' }}>{ski.stravaKm || 0} km</strong></div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
-                        <button
-                          onClick={() => { setSelectedSkiId(ski.id); setView("detail"); }}
-                          style={{ flex: 1, background: '#f8fafc', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '10px', color: '#0284c7', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}
-                        >
-                          Vis kurve & logg →
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setTransferModalSki(ski); }}
-                          style={{ background: '#f5f3ff', border: '1px solid #ddd6fe', color: '#6d28d9', padding: '10px 14px', borderRadius: '10px', fontSize: '13px', fontWeight: '800', cursor: 'pointer' }}
-                          title="Del eller eksporter skikort"
-                        >
-                          📤
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            ))}
           </div>
         )}
 
-        {/* 2. DETALJVISNING MED SKISELECTOR OPPDATERING OG SKIKORT-KNAPP */}
+        {/* 2. DETALJVISNING MED OPPDATERING FRA SKISELECTOR-BILDE */}
         {view === "detail" && activeSki && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-              <button
-                onClick={() => setView("park")}
-                style={{ background: '#ffffff', border: '1px solid #cbd5e1', color: '#0284c7', padding: '8px 16px', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', fontWeight: '700' }}
-              >
-                ← Tilbake til skiparken
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button onClick={() => setView("park")} style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '8px 16px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer' }}>
+                ← Tilbake
               </button>
 
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
                 <input
                   type="file"
                   accept="image/*"
-                  ref={detailQrFileInputRef}
+                  ref={detailSkiselectorFileInputRef}
                   style={{ display: 'none' }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const userVals = prompt(
-                        "Skriv inn eller bekreft verdiene fra rapporten:\nF.eks: HBW 1.25 FBW 0.22 Lomme 38/16",
-                        "HBW 1.25 FBW 0.22 Lomme 38/16"
-                      );
-                      handleDetailQrUpdate(userVals || file.name);
-                    }
-                  }}
+                  onChange={handleScanSkiselectorForActiveSki}
                 />
-
-                <input
-                  type="file"
-                  accept="image/*"
-                  ref={receiptFileInputRef}
-                  onChange={handleUploadReceipt}
-                  style={{ display: 'none' }}
-                />
-
                 <button
-                  onClick={() => setShowDetailQrBox(!showDetailQrBox)}
-                  style={{ background: '#f0fdf4', border: '1.5px solid #059669', color: '#059669', padding: '8px 14px', borderRadius: '10px', fontSize: '13px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  onClick={() => detailSkiselectorFileInputRef.current?.click()}
+                  style={{ background: '#f0fdf4', border: '1.5px solid #059669', color: '#059669', padding: '8px 14px', borderRadius: '10px', fontWeight: '800', cursor: 'pointer' }}
                 >
-                  <span>📊</span>
-                  <span>Oppdater fra Skiselector</span>
+                  📊 Les inn Skiselector-bilde
                 </button>
-
-                <button
-                  onClick={() => receiptFileInputRef.current?.click()}
-                  style={{ background: '#eff6ff', border: '1.5px solid #0284c7', color: '#0284c7', padding: '8px 14px', borderRadius: '10px', fontSize: '13px', fontWeight: '800', cursor: 'pointer' }}
-                >
-                  🧾 {activeSki.receiptUrl ? "Bytt kvittering" : "Legg til kvittering"}
-                </button>
-
                 <button
                   onClick={() => setTransferModalSki(activeSki)}
-                  style={{ background: '#f5f3ff', border: '1.5px solid #7c3aed', color: '#6d28d9', padding: '8px 14px', borderRadius: '10px', fontSize: '13px', fontWeight: '800', cursor: 'pointer' }}
+                  style={{ background: '#f5f3ff', border: '1.5px solid #7c3aed', color: '#6d28d9', padding: '8px 14px', borderRadius: '10px', fontWeight: '800', cursor: 'pointer' }}
                 >
-                  📤 Skikort (Salg/Del)
+                  📤 Skikort
                 </button>
               </div>
             </div>
 
-            {/* BOKS FOR SKISELECTOR OPPDATERING PÅ AKTIVT PAR */}
-            {showDetailQrBox && (
-              <div style={{ background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: '16px', padding: '18px 22px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontWeight: '800', color: '#166534', fontSize: '15px' }}>
-                    📊 Oppdater Skiselector / måledata for {activeSki.brand} {activeSki.model}:
-                  </div>
-                  <button onClick={() => setShowDetailQrBox(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#166534', fontWeight: 'bold' }}>✕ Lukk</button>
-                </div>
-
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <button
-                    onClick={() => detailQrFileInputRef.current?.click()}
-                    style={{ background: '#059669', color: '#ffffff', border: 'none', padding: '10px 18px', borderRadius: '10px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}
-                  >
-                    📷 Last opp skjermbilde av rapport
-                  </button>
-
-                  <div style={{ display: 'flex', gap: '6px', flex: '1 1 240px' }}>
-                    <input
-                      type="text"
-                      placeholder="eller skriv inn: HBW 1.25 FBW 0.22..."
-                      value={detailManualQrInput}
-                      onChange={(e) => setDetailManualQrInput(e.target.value)}
-                      style={{ flex: 1, background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '8px 12px', fontSize: '13px' }}
-                    />
-                    <button
-                      onClick={() => {
-                        if (detailManualQrInput.trim()) handleDetailQrUpdate(detailManualQrInput.trim());
-                      }}
-                      style={{ background: '#0f172a', color: '#ffffff', border: 'none', padding: '8px 14px', borderRadius: '10px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}
-                    >
-                      Lagre
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
-                <div>
-                  <h2 style={{ fontSize: '26px', margin: '0 0 6px 0', fontWeight: '800' }}>
-                    {activeSki.skiNumber ? `${activeSki.skiNumber} · ` : ''}{activeSki.brand} {activeSki.model}
-                  </h2>
-                  <p style={{ color: '#64748b', fontSize: '15px', margin: 0 }}>{activeSki.type} • {activeSki.lengthCm} cm • Slip: {activeSki.grind || 'Standard'}</p>
-                </div>
-
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '8px 12px', borderRadius: '12px' }}>
-                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>LØPER / STALL</div>
-                    <select
-                      value={activeSki.memberId || "all"}
-                      onChange={(e) => handleTransferSkiToFamilyMember(activeSki.id, e.target.value)}
-                      style={{ background: '#ffffff', border: '1px solid #cbd5e1', padding: '4px 8px', borderRadius: '6px', fontSize: '13px', fontWeight: '800', color: '#0284c7' }}
-                    >
-                      {members.map(m => <option key={m.id} value={m.id}>{m.name} ({m.weightKg} kg)</option>)}
-                      <option value="all">Fellespar / Alle</option>
-                    </select>
-                  </div>
-
-                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '8px 12px', borderRadius: '12px' }}>
-                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>STRAVA HASHTAG</div>
-                    <input
-                      type="text"
-                      defaultValue={activeSki.tag || ""}
-                      onBlur={(e) => handleUpdateTag(activeSki.id, e.target.value)}
-                      style={{ background: '#ffffff', border: '1px solid #cbd5e1', padding: '4px 8px', borderRadius: '6px', fontSize: '13px', fontWeight: '700', width: '90px' }}
-                    />
-                  </div>
-
-                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '8px 12px', borderRadius: '12px' }}>
-                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>BINDING (SHIFT)</div>
-                    <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
-                      {["-2", "-1", "0", "+1", "+2"].map(shift => (
-                        <button
-                          key={shift}
-                          onClick={() => handleUpdateBinding(activeSki.id, shift)}
-                          style={{
-                            background: (activeSki.bindingShift || "0") === shift ? '#ff5500' : '#ffffff',
-                            color: (activeSki.bindingShift || "0") === shift ? '#ffffff' : '#334155',
-                            border: '1px solid #cbd5e1',
-                            borderRadius: '6px',
-                            padding: '4px 8px',
-                            fontSize: '12px',
-                            fontWeight: 'bold',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {shift}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px' }}>
+              <h2 style={{ margin: '0 0 6px 0', fontSize: '24px', fontWeight: '800' }}>{activeSki.brand} {activeSki.model}</h2>
+              <p style={{ margin: 0, color: '#64748b' }}>{activeSki.lengthCm} cm • Målt utøvervekt: {activeSki.weightKgMin} - {activeSki.weightKgMax} kg</p>
             </div>
 
-            {/* SPENN OG KURVE */}
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px' }}>
-              <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', fontWeight: '800' }}>Spennkurve ({currentMember.weightKg} kg)</h3>
-              <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px' }}>
+              <h3 style={{ margin: '0 0 10px 0' }}>Spennkurve</h3>
+              <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '16px' }}>
                 <svg viewBox="0 0 800 140" style={{ width: '100%', height: '140px' }}>
                   <line x1="20" y1="110" x2="780" y2="110" stroke="#cbd5e1" strokeWidth="2.5" strokeDasharray="4" />
                   {activeSki.hbw && <path d="M 60 108 Q 400 24 740 108" fill="none" stroke="#0284c7" strokeWidth="4" />}
                   {activeSki.fbw && <path d="M 120 109 Q 400 82 680 109" fill="none" stroke="#ff5500" strokeWidth="3" />}
                   <line x1="400" y1="15" x2="400" y2="110" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="3" />
-                  {activeSki.pocketFrontCm && <rect x="270" y="105" width="200" height="9" fill="#10b981" opacity="0.75" rx="3" />}
                 </svg>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: '700', color: '#334155', paddingTop: '16px', borderTop: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '10px' }}>
-                  <div>HBW: <strong style={{ color: '#0284c7' }}>{activeSki.hbw ? `${activeSki.hbw} mm` : "Ikke målt"}</strong></div>
-                  <div>FBW: <strong style={{ color: '#ff5500' }}>{activeSki.fbw ? `${activeSki.fbw} mm` : "Ikke målt"}</strong></div>
-                  <div>Smørelomme: <strong style={{ color: '#059669' }}>{activeSki.pocketFrontCm ? `+${activeSki.pocketFrontCm}cm / -${activeSki.pocketRearCm || 0}cm` : "Ikke målt"}</strong></div>
-                  <div>Total distanse: <strong style={{ color: '#ea580c' }}>{activeSki.stravaKm || 0} km</strong></div>
-                </div>
-              </div>
-            </div>
-
-            {/* NOTATER OG SMØRELOGG */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-              {activeSki.receiptUrl && (
-                <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>🧾 Lagret Kvittering</h4>
-                    <button onClick={() => setViewingReceiptUrl(activeSki.receiptUrl)} style={{ background: '#eff6ff', border: 'none', color: '#0284c7', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>Forstørr</button>
-                  </div>
-                  <img src={activeSki.receiptUrl} alt="Kvittering" style={{ maxWidth: '100%', maxHeight: '160px', objectFit: 'contain', borderRadius: '10px' }} />
-                </div>
-              )}
-
-              <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px' }}>
-                <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: '800' }}>📝 Erfaringer & Førenotater</h4>
-                <textarea
-                  defaultValue={activeSki.notes || ""}
-                  onBlur={(e) => handleSaveNotes(activeSki.id, e.target.value)}
-                  rows="4"
-                  style={{ width: '100%', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '12px', padding: '12px', fontSize: '14px', boxSizing: 'border-box' }}
-                  placeholder="Skriv erfaringer med dette paret..."
-                />
-              </div>
-
-              <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px' }}>
-                <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: '800' }}>🔧 Smøre- og øktlogg</h4>
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
-                  <input
-                    id="logInput"
-                    type="text"
-                    placeholder="F.eks Swix VP45 + Marathon"
-                    style={{ flex: 1, background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '10px', fontSize: '14px' }}
-                  />
-                  <button
-                    onClick={() => {
-                      const inp = document.getElementById("logInput");
-                      if (inp && inp.value.trim()) {
-                        handleAddLog(activeSki.id, {
-                          date: new Date().toISOString().split("T")[0],
-                          title: inp.value,
-                          type: "Logg"
-                        });
-                        inp.value = "";
-                      }
-                    }}
-                    style={{ background: '#0284c7', border: 'none', color: '#ffffff', fontWeight: '700', padding: '10px 18px', borderRadius: '10px', cursor: 'pointer' }}
-                  >
-                    + Logg
-                  </button>
-                </div>
-                <div style={{ maxHeight: '160px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {(activeSki.maintenanceLog || []).map((l, i) => (
-                    <div key={i} style={{ background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', fontSize: '13px', display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ fontWeight: '600' }}>{l.title}</span>
-                      <span style={{ color: '#64748b' }}>{l.date}</span>
-                    </div>
-                  ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '16px', borderTop: '1px solid #e2e8f0', fontWeight: '700' }}>
+                  <div>HBW: <strong style={{ color: '#0284c7' }}>{activeSki.hbw ? `${activeSki.hbw} mm` : '-'}</strong></div>
+                  <div>FBW: <strong style={{ color: '#ff5500' }}>{activeSki.fbw ? `${activeSki.fbw} mm` : '-'}</strong></div>
+                  <div>Smørelomme: <strong style={{ color: '#059669' }}>+{activeSki.pocketFrontCm || 30}cm / -{activeSki.pocketRearCm || 15}cm</strong></div>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* 3. REGISTRER SKI MED SKISELECTOR OPPLASTING OG HURTIGVALG */}
+        {/* 3. REGISTRER SKI MED SKISELECTOR OCR */}
         {view === "manual" && (
           <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '22px', padding: '30px', maxWidth: '680px', margin: '0 auto' }}>
             <h2 style={{ fontSize: '22px', margin: '0 0 6px 0', fontWeight: '800' }}>➕ Registrer skipar</h2>
             <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#64748b' }}>
-              Last opp målerapport fra Skiselector, eller velg en modell fra databasen under.
+              Last opp skjermbilde fra Skiselector. Nettleseren scanner og henter tallene rett fra bildet.
             </p>
 
             <input
               type="file"
               accept="image/*"
-              ref={qrImageFileInputRef}
+              ref={skiselectorFileInputRef}
               style={{ display: 'none' }}
-              onChange={handleUploadSkiselectorForNewSki}
+              onChange={handleScanSkiselectorForNewSki}
             />
 
-            {/* SKISELECTOR KNAPPER */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px', marginBottom: '20px' }}>
-              <button
-                type="button"
-                onClick={() => qrImageFileInputRef.current?.click()}
-                style={{ border: '2px dashed #0284c7', borderRadius: '14px', padding: '16px', textAlign: 'center', cursor: 'pointer', background: '#f0f9ff', color: '#0284c7', fontWeight: '800', fontSize: '15px' }}
-              >
-                <div style={{ fontSize: '26px', marginBottom: '4px' }}>📄 📊</div>
-                Last opp skjermbilde av Skiselector-rapport / etikett
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => skiselectorFileInputRef.current?.click()}
+              style={{ width: '100%', border: '2px dashed #0284c7', borderRadius: '16px', padding: '24px', textAlign: 'center', cursor: 'pointer', background: '#f0f9ff', color: '#0284c7', fontWeight: '800', fontSize: '16px', marginBottom: '20px' }}
+            >
+              📄 📊 Last opp skjermbilde fra Skiselector
+            </button>
 
-            {/* HURTIG-PRESETS */}
-            <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '14px', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
-              <div style={{ fontSize: '12px', fontWeight: '800', color: '#475569', marginBottom: '8px' }}>
-                ⚡ FORHÅNDSDEFINERTE RACING-MODELLER (ETT KLIKK):
-              </div>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', maxHeight: '120px', overflowY: 'auto' }}>
-                {RACING_PRESETS.map((p, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => handleApplyPreset(p)}
-                    style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '5px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
-                  >
-                    {p.brand} {p.model}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* FORM */}
             <form onSubmit={(e) => {
               e.preventDefault();
               handleAddSki({
@@ -1663,11 +836,11 @@ export default function Home() {
                 model: newSkiData.model || "Modell",
                 type: newSkiData.type,
                 camberType: newSkiData.camberType || "Universal",
-                lengthCm: parseInt(newSkiData.lengthCm) || 197,
-                weightKgMin: parseFloat(newSkiData.weightKgMin) || 70,
-                weightKgMax: parseFloat(newSkiData.weightKgMax) || 88,
-                tempOptimalMin: parseFloat(newSkiData.tempOptimalMin) || -10,
-                tempOptimalMax: parseFloat(newSkiData.tempOptimalMax) || -2,
+                lengthCm: parseInt(newSkiData.lengthCm) || 195,
+                weightKgMin: parseFloat(newSkiData.weightKgMin) || 53,
+                weightKgMax: parseFloat(newSkiData.weightKgMax) || 57,
+                tempOptimalMin: -10,
+                tempOptimalMax: -2,
                 bindingShift: "0",
                 grind: newSkiData.grind || "Standard",
                 hbw: newSkiData.hbw ? parseFloat(newSkiData.hbw) : null,
@@ -1675,8 +848,6 @@ export default function Home() {
                 pocketFrontCm: newSkiData.pocketFrontCm ? parseFloat(newSkiData.pocketFrontCm) : null,
                 pocketRearCm: newSkiData.pocketRearCm ? parseFloat(newSkiData.pocketRearCm) : null,
                 stravaKm: 0,
-                thumbnailUrl: null,
-                receiptUrl: null,
                 notes: newSkiData.notes,
                 maintenanceLog: []
               });
@@ -1684,29 +855,7 @@ export default function Home() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '4px' }}>Hvem tilhører paret?</label>
-                  <select
-                    value={activeMemberId}
-                    onChange={(e) => setActiveMemberId(e.target.value)}
-                    style={{ width: '100%', background: '#f8fafc', border: '1.5px solid #cbd5e1', padding: '10px', borderRadius: '10px', fontWeight: 'bold', color: '#0284c7' }}
-                  >
-                    {members.map(m => <option key={m.id} value={m.id}>{m.name} ({m.weightKg} kg)</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '4px' }}>Par-nummer / ID</label>
-                  <input
-                    value={newSkiData.skiNumber}
-                    placeholder="f.eks #01"
-                    onChange={(e) => setNewSkiData({ ...newSkiData, skiNumber: e.target.value })}
-                    style={{ width: '100%', background: '#f8fafc', border: '1.5px solid #cbd5e1', padding: '10px', borderRadius: '10px', boxSizing: 'border-box' }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '4px' }}>Merke</label>
+                  <label style={{ fontSize: '12px', fontWeight: '700' }}>Merke</label>
                   <input
                     value={newSkiData.brand}
                     onChange={(e) => setNewSkiData({ ...newSkiData, brand: e.target.value })}
@@ -1715,31 +864,7 @@ export default function Home() {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '4px' }}>Modell</label>
-                  <input
-                    value={newSkiData.model}
-                    onChange={(e) => setNewSkiData({ ...newSkiData, model: e.target.value })}
-                    required
-                    style={{ width: '100%', border: '1.5px solid #cbd5e1', padding: '10px', borderRadius: '10px', boxSizing: 'border-box' }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
-                <div>
-                  <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '4px' }}>Stilart</label>
-                  <select
-                    value={newSkiData.type}
-                    onChange={(e) => setNewSkiData({ ...newSkiData, type: e.target.value })}
-                    style={{ width: '100%', border: '1.5px solid #cbd5e1', padding: '10px', borderRadius: '10px' }}
-                  >
-                    <option>Klassisk</option>
-                    <option>Skate</option>
-                    <option>Felleski</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '4px' }}>Lengde (cm)</label>
+                  <label style={{ fontSize: '12px', fontWeight: '700' }}>Lengde (cm)</label>
                   <input
                     type="number"
                     value={newSkiData.lengthCm}
@@ -1747,52 +872,41 @@ export default function Home() {
                     style={{ width: '100%', border: '1.5px solid #cbd5e1', padding: '10px', borderRadius: '10px', boxSizing: 'border-box' }}
                   />
                 </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ fontSize: '12px', fontWeight: '700', color: '#c2410c', display: 'block', marginBottom: '4px' }}>Strava #tag</label>
+                  <label style={{ fontSize: '12px', fontWeight: '700' }}>Min Vekt (kg)</label>
                   <input
-                    value={newSkiData.tag}
-                    placeholder="#tag"
-                    onChange={(e) => setNewSkiData({ ...newSkiData, tag: e.target.value })}
-                    style={{ width: '100%', background: '#fff7ed', border: '1.5px solid #fed7aa', color: '#c2410c', padding: '10px', borderRadius: '10px', boxSizing: 'border-box' }}
+                    value={newSkiData.weightKgMin}
+                    onChange={(e) => setNewSkiData({ ...newSkiData, weightKgMin: e.target.value })}
+                    style={{ width: '100%', border: '1.5px solid #cbd5e1', padding: '10px', borderRadius: '10px', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: '700' }}>Maks Vekt (kg)</label>
+                  <input
+                    value={newSkiData.weightKgMax}
+                    onChange={(e) => setNewSkiData({ ...newSkiData, weightKgMax: e.target.value })}
+                    style={{ width: '100%', border: '1.5px solid #cbd5e1', padding: '10px', borderRadius: '10px', boxSizing: 'border-box' }}
                   />
                 </div>
               </div>
 
-              {/* MÅLEVERDIER FRA SKISELECTOR */}
-              <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '8px' }}>
+              <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 <div>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#0284c7' }}>HBW (Halvvekt)</label>
+                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#0284c7' }}>HBW (Halvvekt mm)</label>
                   <input
                     value={newSkiData.hbw}
-                    placeholder="1.24"
                     onChange={(e) => setNewSkiData({ ...newSkiData, hbw: e.target.value })}
                     style={{ width: '100%', border: '1px solid #cbd5e1', padding: '6px', borderRadius: '6px', boxSizing: 'border-box' }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#ff5500' }}>FBW (Fullvekt)</label>
+                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#ff5500' }}>FBW (Fullvekt mm)</label>
                   <input
                     value={newSkiData.fbw}
-                    placeholder="0.22"
                     onChange={(e) => setNewSkiData({ ...newSkiData, fbw: e.target.value })}
-                    style={{ width: '100%', border: '1px solid #cbd5e1', padding: '6px', borderRadius: '6px', boxSizing: 'border-box' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#059669' }}>Lomme foran</label>
-                  <input
-                    value={newSkiData.pocketFrontCm}
-                    placeholder="38"
-                    onChange={(e) => setNewSkiData({ ...newSkiData, pocketFrontCm: e.target.value })}
-                    style={{ width: '100%', border: '1px solid #cbd5e1', padding: '6px', borderRadius: '6px', boxSizing: 'border-box' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: '11px', fontWeight: '700', color: '#059669' }}>Lomme bak</label>
-                  <input
-                    value={newSkiData.pocketRearCm}
-                    placeholder="16"
-                    onChange={(e) => setNewSkiData({ ...newSkiData, pocketRearCm: e.target.value })}
                     style={{ width: '100%', border: '1px solid #cbd5e1', padding: '6px', borderRadius: '6px', boxSizing: 'border-box' }}
                   />
                 </div>
