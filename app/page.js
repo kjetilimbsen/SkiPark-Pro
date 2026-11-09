@@ -112,8 +112,8 @@ const FAQ_ITEMS = [
   {
     category: "strava",
     categoryLabel: "🚴 Strava-synkronisering",
-    question: "Er Strava-synkronisering ekte eller demodata?",
-    answer: "SkiPark Pro støtter begge deler! Du kan koble til din personlige Strava-konto med ekte Strava v3 OAuth. Når du er tilkoblet, hentes de siste 40 langrenns- og skiturene dine direkte fra Strava API. Hvis du ikke har konfigurert Strava-appnøkler (STRAVA_CLIENT_ID / SECRET) ennå, kan du når som helst kjøre innebygd demosynk for å teste hvordan #tag-matching og fordeling av turer fungerer."
+    question: "Hvordan fungerer Strava-synkroniseringen?",
+    answer: "Når du kobler til din personlige Strava-konto, henter SkiPark Pro dine nylige ski- og treningsøkter. Appen leser tittelen på økten, gjenkjenner emneknaggen (#tag) som tilhører skiparet ditt, og legger automatisk til kilometerne og loggfører turen i skiens vedlikeholdslogg."
   }
 ];
 
@@ -386,12 +386,7 @@ export default function Home() {
   const [stravaToken, setStravaToken] = useState(null);
   const [stravaAthlete, setStravaAthlete] = useState(null);
   const [stravaSyncing, setStravaSyncing] = useState(false);
-  const [stravaConfigured, setStravaConfigured] = useState(null);
   const [showStravaModal, setShowStravaModal] = useState(false);
-  const [showStravaSetupGuide, setShowStravaSetupGuide] = useState(false);
-  const [showManualTokenInput, setShowManualTokenInput] = useState(false);
-  const [manualTokenInput, setManualTokenInput] = useState("");
-  const [validatingToken, setValidatingToken] = useState(false);
   const [unassignedActivities, setUnassignedActivities] = useState([]);
 
   // PWA install
@@ -505,13 +500,6 @@ export default function Home() {
     const savedStravaAthlete = localStorage.getItem("skipark_strava_athlete");
     if (savedStravaAthlete) try { setStravaAthlete(JSON.parse(savedStravaAthlete)); } catch (e) {}
 
-    // Sjekk om Strava API er konfigurert på serveren
-    fetch(`/api/strava/auth-url?origin=${encodeURIComponent(window.location.origin)}`)
-      .then(r => r.json())
-      .then(d => {
-        setStravaConfigured(Boolean(d.configured));
-      })
-      .catch(() => {});
 
     const handleOAuthMessage = (event) => {
       if (event.data?.type === 'OAUTH_AUTH_SUCCESS' && event.data?.service === 'strava') {
@@ -1083,15 +1071,12 @@ export default function Home() {
       const res = await fetch(`/api/strava/auth-url?origin=${encodeURIComponent(window.location.origin)}`);
       const data = await res.json();
       if (!data.configured) {
-        setStravaConfigured(false);
-        setShowStravaSetupGuide(true);
+        alert("Strava-integrasjonen konfigureres av administrator. Du kan teste funksjonen med prøvedata i mellomtiden.");
         return;
       }
-      setStravaConfigured(true);
-      // Åpne Strava OAuth direkte i popup iht retningslinjer
       window.open(data.url, 'strava_oauth', 'width=600,height=750,left=200,top=100');
     } catch (err) {
-      alert("Klarte ikke å starte Strava-tilkobling: " + err.message);
+      alert("Klarte ikke å åpne Strava: " + err.message);
     }
   };
 
@@ -1109,42 +1094,12 @@ export default function Home() {
 
   const handleRunDemoSync = () => {
     const demoActivities = [
-      { id: "demo-act-1", title: "Kveldstur Sjusjøen #speedmax", distanceKm: 24.5, date: "I dag (Demo)", type: "NordicSki" },
-      { id: "demo-act-2", title: "Klassisk i Nordmarka #redline", distanceKm: 18.0, date: "I går (Demo)", type: "NordicSki" },
-      { id: "demo-act-3", title: "Rundløype Beitostølen", distanceKm: 14.2, date: "3 dager siden (Demo)", type: "NordicSki" }
+      { id: "demo-act-1", title: "Kveldstur Sjusjøen #speedmax", distanceKm: 24.5, date: "I dag", type: "NordicSki" },
+      { id: "demo-act-2", title: "Klassisk i Nordmarka #redline", distanceKm: 18.0, date: "I går", type: "NordicSki" },
+      { id: "demo-act-3", title: "Rundløype Beitostølen", distanceKm: 14.2, date: "3 dager siden", type: "NordicSki" }
     ];
 
     processIncomingActivities(demoActivities, true);
-  };
-
-  const handleConnectManualToken = async (e) => {
-    e?.preventDefault();
-    const token = manualTokenInput.trim();
-    if (!token) return alert("Vennligst lim inn et Strava Access Token.");
-    setValidatingToken(true);
-    try {
-      // Verifiser token mot Stravas athlete-endepunkt
-      const res = await fetch('https://www.strava.com/api/v3/athlete', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!res.ok) {
-        throw new Error("Tokenet ble avvist av Strava (feilkode " + res.status + "). Kontroller at tokenet er gyldig og har 'activity:read_all'.");
-      }
-      const athlete = await res.json();
-      localStorage.setItem("skipark_strava_token", token);
-      localStorage.setItem("skipark_strava_athlete", JSON.stringify(athlete));
-      localStorage.setItem("skipark_strava_connected", "true");
-      setStravaToken(token);
-      setStravaAthlete(athlete);
-      setStravaConnected(true);
-      setShowManualTokenInput(false);
-      setManualTokenInput("");
-      alert(`✓ Tilkoblet Strava for ${athlete.firstname} ${athlete.lastname || ''}!\nDine personlige skiøkter kan nå synkroniseres til stallen din.`);
-    } catch (err) {
-      alert("Kunne ikke koble til Strava: " + err.message);
-    } finally {
-      setValidatingToken(false);
-    }
   };
 
   const processIncomingActivities = (activities, isDemo = false) => {
@@ -1516,10 +1471,10 @@ export default function Home() {
 
             <button
               onClick={() => setShowStravaModal(true)}
-              style={{ background: stravaToken ? '#f0fdf4' : (stravaConnected ? '#fff7ed' : '#f8fafc'), border: '1.5px solid ' + (stravaToken ? '#16a34a' : (stravaConnected ? '#fc4c02' : '#cbd5e1')), color: stravaToken ? '#15803d' : (stravaConnected ? '#ea580c' : '#475569'), padding: '8px 14px', borderRadius: '12px', fontSize: '13px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              style={{ background: stravaConnected ? '#fff7ed' : '#f8fafc', border: '1.5px solid ' + (stravaConnected ? '#fc4c02' : '#cbd5e1'), color: stravaConnected ? '#ea580c' : '#475569', padding: '8px 14px', borderRadius: '12px', fontSize: '13px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
               <span>🚴</span>
-              <span>{stravaToken ? (stravaAthlete?.firstname ? `Strava (${stravaAthlete.firstname})` : "Strava (Ekte v3)") : (stravaConnected ? "Strava (Demo)" : "Koble Strava")}</span>
+              <span>{stravaConnected ? (stravaAthlete?.firstname ? `Strava (${stravaAthlete.firstname})` : "Strava (Tilkoblet)") : "Koble Strava"}</span>
             </button>
 
             <button
@@ -1705,192 +1660,104 @@ export default function Home() {
 
         {/* STRAVA MODAL */}
         {showStravaModal && (
-          <div style={{ background: '#ffffff', border: '2px solid #fc4c02', borderRadius: '22px', padding: '24px', marginTop: '16px', boxShadow: '0 10px 25px -5px rgba(252, 76, 2, 0.15)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', borderBottom: '1px solid #fed7aa', paddingBottom: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ background: '#ffffff', border: '1.5px solid #fed7aa', borderRadius: '22px', padding: '24px', marginTop: '16px', boxShadow: '0 10px 25px -5px rgba(252, 76, 2, 0.12)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #f1f5f9', paddingBottom: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{ background: '#ffedd5', width: '42px', height: '42px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' }}>
                   🚴
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '900', color: '#9a3412' }}>
-                    Strava Km-synkronisering & #tag
+                  <h3 style={{ margin: 0, fontSize: '19px', fontWeight: '900', color: '#0f172a' }}>
+                    Strava-synkronisering
                   </h3>
-                  <div style={{ fontSize: '13px', color: '#7c2d12', marginTop: '2px' }}>
-                    Automatisk kilometerføring og øktlogg for hvert enkelt skipar
+                  <div style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>
+                    Automatisk kilometerføring på skiparene dine via emneknagg (#tag)
                   </div>
                 </div>
               </div>
               <button
                 onClick={() => setShowStravaModal(false)}
-                style={{ background: '#f1f5f9', border: 'none', borderRadius: '10px', width: '34px', height: '34px', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', width: '34px', height: '34px', fontSize: '15px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}
               >
                 ✕
               </button>
             </div>
 
-            {/* STATUS & ATHLETE BADGE */}
-            <div style={{ background: stravaToken ? '#f0fdf4' : (stravaConnected ? '#fffbeb' : '#fff7ed'), border: '1px solid ' + (stravaToken ? '#bbf7d0' : (stravaConnected ? '#fde68a' : '#fed7aa')), borderRadius: '14px', padding: '14px 18px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                {stravaAthlete?.profile ? (
-                  <img src={stravaAthlete.profile} alt="Profilbilde" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
-                ) : (
-                  <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: stravaToken ? '#16a34a' : '#fc4c02', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '18px' }}>
-                    {stravaToken ? '✓' : '⚡'}
-                  </div>
-                )}
-                <div>
-                  <div style={{ fontWeight: '800', fontSize: '15px', color: '#0f172a' }}>
-                    {stravaToken ? (
-                      <span>Tilkoblet som <strong style={{ color: '#16a34a' }}>{stravaAthlete ? `${stravaAthlete.firstname || ''} ${stravaAthlete.lastname || ''}`.trim() : 'Strava-bruker'}</strong> (Ekte v3 API)</span>
-                    ) : (stravaConnected ? (
-                      <span>Demosynk aktivert (Eksempeløkter)</span>
-                    ) : (
-                      <span>Ikke tilkoblet Strava</span>
-                    ))}
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
-                    {stravaToken
-                      ? 'SkiPark Pro kan hente dine faktiske turer fra Strava og matche dem med skistallen din.'
-                      : 'Koble til din egen Strava-konto for ekte data, eller test med demodata for å se flyten.'}
+            {/* STATUS / PROFILKORT */}
+            {stravaConnected ? (
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '16px 20px', marginBottom: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  {stravaAthlete?.profile ? (
+                    <img src={stravaAthlete.profile} alt="Profil" style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover' }} />
+                  ) : (
+                    <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#fc4c02', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '18px' }}>
+                      🚴
+                    </div>
+                  )}
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontWeight: '800', fontSize: '16px', color: '#0f172a' }}>
+                        {stravaAthlete?.firstname ? `${stravaAthlete.firstname} ${stravaAthlete.lastname || ''}`.trim() : 'Tilkoblet Strava'}
+                      </span>
+                      <span style={{ background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '800' }}>
+                        ✓ Aktiv
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '3px' }}>
+                      Klar til å hente nye skiturer til stallen din
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {stravaConnected && (
-                <button
-                  onClick={handleDisconnectStrava}
-                  style={{ background: '#ffffff', border: '1px solid #cbd5e1', color: '#dc2626', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
-                >
-                  Koble fra
-                </button>
-              )}
-            </div>
-
-            {/* HOVEDHANDLINGER */}
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '16px' }}>
-              {stravaToken ? (
-                <button
-                  onClick={handleSyncStravaActivities}
-                  disabled={stravaSyncing}
-                  style={{ background: '#fc4c02', color: '#ffffff', border: 'none', padding: '12px 22px', borderRadius: '12px', fontWeight: '800', fontSize: '14px', cursor: stravaSyncing ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', opacity: stravaSyncing ? 0.7 : 1 }}
-                >
-                  <span>{stravaSyncing ? '⏳' : '🔄'}</span>
-                  <span>{stravaSyncing ? 'Henter turer fra Strava...' : 'Synkroniser Strava-turer nå'}</span>
-                </button>
-              ) : (
-                <button
-                  onClick={handleConnectStrava}
-                  style={{ background: '#fc4c02', color: '#ffffff', border: 'none', padding: '12px 22px', borderRadius: '12px', fontWeight: '800', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
-                >
-                  <span>🔗</span>
-                  <span>Koble til med din Strava (OAuth)</span>
-                </button>
-              )}
-
-              <button
-                onClick={handleRunDemoSync}
-                style={{ background: '#f8fafc', border: '1.5px solid #cbd5e1', color: '#334155', padding: '12px 18px', borderRadius: '12px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}
-                title="Tester matchingen og fordelingen med 3 forhåndsdefinerte prøveturer"
-              >
-                🧪 Kjør demosynk (testdata)
-              </button>
-
-              <button
-                onClick={() => setShowManualTokenInput(!showManualTokenInput)}
-                style={{ background: '#f0fdf4', border: '1.5px solid #86efac', color: '#166534', padding: '12px 16px', borderRadius: '12px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}
-              >
-                🔑 {showManualTokenInput ? 'Skjul token-felt ▲' : 'Bruk personlig Access Token ▼'}
-              </button>
-
-              <button
-                onClick={() => setShowStravaSetupGuide(!showStravaSetupGuide)}
-                style={{ background: 'none', border: 'none', color: '#ea580c', textDecoration: 'underline', padding: '12px 8px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}
-              >
-                {showStravaSetupGuide ? 'Skjul app-veiledning ▲' : '⚙️ Flerbruker OAuth-oppsett ▼'}
-              </button>
-            </div>
-
-            {/* MANUELL TOKEN INNTILLING FOR BRUKERE */}
-            {showManualTokenInput && !stravaToken && (
-              <form onSubmit={handleConnectManualToken} style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: '16px', padding: '16px 20px', marginBottom: '16px' }}>
-                <div style={{ fontWeight: '800', fontSize: '14px', color: '#166534', marginBottom: '4px' }}>
-                  🔑 Koble til direkte med ditt personlige Strava Access Token:
-                </div>
-                <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#15803d' }}>
-                  Hvis du allerede har et Strava API Access Token (fra <a href="https://www.strava.com/settings/api" target="_blank" rel="noreferrer" style={{ color: '#166534', fontWeight: 'bold', textDecoration: 'underline' }}>strava.com/settings/api</a>), kan du lime det inn her for å koble til din personlige konto umiddelbart:
-                </p>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type="password"
-                    placeholder="Lim inn Strava Access Token her..."
-                    value={manualTokenInput}
-                    onChange={(e) => setManualTokenInput(e.target.value)}
-                    style={{ flex: 1, padding: '10px 14px', borderRadius: '10px', border: '1px solid #86efac', background: '#fff', fontSize: '13px' }}
-                  />
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                   <button
-                    type="submit"
-                    disabled={validatingToken}
-                    style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '10px', fontWeight: '800', fontSize: '13px', cursor: validatingToken ? 'wait' : 'pointer' }}
+                    onClick={handleSyncStravaActivities}
+                    disabled={stravaSyncing}
+                    style={{ background: '#fc4c02', color: '#ffffff', border: 'none', padding: '11px 22px', borderRadius: '12px', fontWeight: '800', fontSize: '14px', cursor: stravaSyncing ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', opacity: stravaSyncing ? 0.7 : 1 }}
                   >
-                    {validatingToken ? 'Sjekker...' : 'Koble til nå'}
+                    <span>{stravaSyncing ? '⏳' : '🔄'}</span>
+                    <span>{stravaSyncing ? 'Henter økter...' : 'Synkroniser økter nå'}</span>
+                  </button>
+                  <button
+                    onClick={handleDisconnectStrava}
+                    style={{ background: '#ffffff', border: '1px solid #cbd5e1', color: '#64748b', padding: '10px 14px', borderRadius: '12px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}
+                  >
+                    Koble fra
                   </button>
                 </div>
-              </form>
-            )}
-
-            {/* PERSONVERN & FLERBRUKER-FORKLARING */}
-            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '14px', padding: '12px 16px', marginBottom: '14px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-              <div style={{ fontSize: '20px' }}>👥</div>
-              <div style={{ fontSize: '12px', color: '#1e3a8a', lineHeight: 1.5 }}>
-                <strong>Hvordan fungerer dette for ulike brukere?</strong> Hver enkelt bruker logger inn med <em>sin egen</em> private Strava-konto. SkiPark Pro henter utelukkende den innloggede brukerens egne turer, og legger kilometerne på brukerens egne ski. Dine data forblir 100% private.
               </div>
-            </div>
-
-            {/* HVORDAN #TAG FUNGERER */}
-            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '14px 18px', marginBottom: '14px' }}>
-              <div style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a', marginBottom: '4px' }}>
-                💡 Slik merker brukerne skiene sine i Strava:
-              </div>
-              <p style={{ margin: 0, fontSize: '13px', color: '#475569', lineHeight: 1.5 }}>
-                Hvert skipar i stallen har en <strong>#tag</strong> (f.eks. <code style={{ background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>#speedmax</code>, <code style={{ background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>#redline</code> eller <code style={{ background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>#madshus</code>). Når du legger ut en tur på Strava, inkluderer du taggen i tittelen. SkiPark Pro oppdager dette og legger til kilometerne og loggfører økten på nøyaktig det paret!
-              </p>
-            </div>
-
-            {/* OPPSETTSVEILEDNING FOR STRAVA DEVELOPER APP */}
-            {showStravaSetupGuide && (
-              <div style={{ background: '#f8fafc', border: '1.5px solid #fed7aa', borderRadius: '16px', padding: '18px', marginTop: '10px' }}>
-                <h4 style={{ margin: '0 0 8px 0', fontSize: '15px', fontWeight: '800', color: '#9a3412' }}>
-                  🔧 Slik fungerer flerbruker Strava-innlogging for alle dine brukere:
-                </h4>
-                <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#475569', lineHeight: 1.5 }}>
-                  Du som eier av SkiPark Pro registrerer en app hos Strava <strong>én gang</strong>. Dette er plattformens felles &laquo;døråpner&raquo;. Når dette er gjort, kan <strong>alle brukere</strong> trykke på &laquo;Koble til med din Strava&raquo;, logge inn med sin egen private Strava-profil, og få sine egne personlige skiøkter overført til sin egen stall!
+            ) : (
+              <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '16px', padding: '18px 20px', marginBottom: '18px' }}>
+                <p style={{ margin: '0 0 14px 0', fontSize: '14px', color: '#7c2d12', lineHeight: 1.5 }}>
+                  Koble til din Strava-konto for automatisk kilometerføring. Når du merker turen med skiens emneknagg (f.eks. <strong style={{ color: '#c2410c' }}>#speedmax</strong> eller <strong style={{ color: '#c2410c' }}>#redline</strong>), overføres distansen automatisk til rett skipar.
                 </p>
-                <ol style={{ margin: '0 0 14px 0', paddingLeft: '20px', fontSize: '13px', color: '#334155', lineHeight: 1.6 }}>
-                  <li>Gå til <a href="https://www.strava.com/settings/api" target="_blank" rel="noreferrer" style={{ color: '#fc4c02', fontWeight: 'bold' }}>strava.com/settings/api</a> og opprett en API Application (navn: f.eks. &laquo;SkiPark Pro&raquo;).</li>
-                  <li>Sett <strong>Authorization Callback Domain</strong> til:
-                    <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', padding: '6px 10px', borderRadius: '6px', fontFamily: 'monospace', fontWeight: 'bold', margin: '4px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>ais-dev-rcdq3yjrj4s3vxt77mdixk-411465599270.europe-west2.run.app</span>
-                      <button
-                        onClick={() => { navigator.clipboard?.writeText("ais-dev-rcdq3yjrj4s3vxt77mdixk-411465599270.europe-west2.run.app"); alert("Kopiert!"); }}
-                        style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', cursor: 'pointer' }}
-                      >
-                        Kopier
-                      </button>
-                    </div>
-                  </li>
-                  <li>Sett din <strong>Client ID</strong> og <strong>Client Secret</strong> i miljøvariablene på serveren:
-                    <div style={{ background: '#0f172a', color: '#38bdf8', padding: '8px 12px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '12px', margin: '6px 0' }}>
-                      STRAVA_CLIENT_ID=&lt;din_client_id&gt;<br />
-                      STRAVA_CLIENT_SECRET=&lt;din_client_secret&gt;
-                    </div>
-                  </li>
-                  <li>Nå er alt klart! Hver gang en bruker trykker &laquo;Koble til med din Strava&raquo;, åpnes Strava der <strong>brukeren godkjenner tilgang til sine egne data</strong>.</li>
-                </ol>
-                <div style={{ background: '#fffbeb', border: '1px solid #fde68a', padding: '10px 14px', borderRadius: '10px', fontSize: '12px', color: '#92400e' }}>
-                  💡 <em>Før du har satt opp fellesnøklene:</em> Hver enkelt bruker kan også trykke <strong>«🔑 Bruk personlig Access Token»</strong> ovenfor for å lime inn sitt eget token og synkronisere sine egne økter direkte!
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={handleConnectStrava}
+                    style={{ background: '#fc4c02', color: '#ffffff', border: 'none', padding: '12px 24px', borderRadius: '12px', fontWeight: '800', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 2px 6px rgba(252,76,2,0.3)' }}
+                  >
+                    <span>🚴</span>
+                    <span>Koble til Strava</span>
+                  </button>
+                  <button
+                    onClick={handleRunDemoSync}
+                    style={{ background: '#ffffff', border: '1px solid #cbd5e1', color: '#475569', padding: '12px 18px', borderRadius: '12px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}
+                  >
+                    ⚡ Test med demoturer
+                  </button>
                 </div>
               </div>
             )}
+
+            {/* HVORDAN #TAG FUNGERER */}
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '14px 18px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a', marginBottom: '4px' }}>
+                💡 Slik merker du skiene på Strava:
+              </div>
+              <p style={{ margin: 0, fontSize: '13px', color: '#475569', lineHeight: 1.5 }}>
+                Hvert skipar har en egen <strong>#tag</strong> (f.eks. <code style={{ background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>#speedmax</code> eller <code style={{ background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>#redline</code>). Skriv taggen i tittelen på Strava-økten, så legges kilometerne automatisk til på paret neste gang du synkroniserer.
+              </p>
+            </div>
           </div>
         )}
 
