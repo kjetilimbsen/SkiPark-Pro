@@ -22,27 +22,21 @@ const DEFAULT_SPOTS = [
   { name: "Kongeveien / Frognerseteren", lat: 59.98, lon: 10.68 }
 ];
 
-// Utvidet database med typiske racingski og fabrikkdata
 const RACING_PRESETS = [
-  // Kästle
   { brand: "Kästle", model: "RX 10 2.0 Classic Cold", type: "Klassisk", grind: "CW1", lengthCm: 206, camber: "Cold", hbw: 1.22, fbw: 0.20, minW: 78, maxW: 88, tempMin: -16, tempMax: -2 },
   { brand: "Kästle", model: "RX 10 2.0 Classic Plus", type: "Klassisk", grind: "CW2", lengthCm: 206, camber: "Plus / Våt", hbw: 1.35, fbw: 0.28, minW: 80, maxW: 90, tempMin: -3, tempMax: 4 },
   { brand: "Kästle", model: "RX 10 2.0 Skate", type: "Skate", grind: "UW-1", lengthCm: 192, camber: "Universal", hbw: 1.40, fbw: 0.35, minW: 75, maxW: 88, tempMin: -10, tempMax: 2 },
-  // Fischer
   { brand: "Fischer", model: "Speedmax 3D Skate Plus", type: "Skate", grind: "P5-1", lengthCm: 191, camber: "Plus 1Q", hbw: 1.35, fbw: 0.30, minW: 74, maxW: 86, tempMin: -8, tempMax: 2 },
   { brand: "Fischer", model: "Speedmax 3D Skate Cold", type: "Skate", grind: "C1-1", lengthCm: 191, camber: "Cold 610", hbw: 1.25, fbw: 0.22, minW: 74, maxW: 86, tempMin: -18, tempMax: -2 },
   { brand: "Fischer", model: "Speedmax 3D Classic Cold", type: "Klassisk", grind: "C12-1", lengthCm: 207, camber: "902 Kald", hbw: 1.15, fbw: 0.18, minW: 76, maxW: 88, tempMin: -16, tempMax: -2 },
   { brand: "Fischer", model: "Speedmax 3D Classic Plus", type: "Klassisk", grind: "P5-1", lengthCm: 207, camber: "812 Plus", hbw: 1.32, fbw: 0.26, minW: 78, maxW: 90, tempMin: -4, tempMax: 4 },
   { brand: "Fischer", model: "Twin Skin Speedmax 3D", type: "Felleski", grind: "P5-1", lengthCm: 207, camber: "Medium", hbw: 1.18, fbw: 0.24, minW: 76, maxW: 88, tempMin: -10, tempMax: 3 },
-  // Madshus
   { brand: "Madshus", model: "Redline 3.0 Classic Cold", type: "Klassisk", grind: "M61", lengthCm: 207, camber: "Cold", hbw: 1.16, fbw: 0.19, minW: 75, maxW: 87, tempMin: -15, tempMax: -2 },
   { brand: "Madshus", model: "Redline 3.0 Classic Warm", type: "Klassisk", grind: "M63", lengthCm: 207, camber: "Warm", hbw: 1.38, fbw: 0.30, minW: 78, maxW: 90, tempMin: -2, tempMax: 5 },
   { brand: "Madshus", model: "Redline 3.0 Skate F2", type: "Skate", grind: "M62", lengthCm: 192, camber: "Hard track", hbw: 1.42, fbw: 0.32, minW: 74, maxW: 86, tempMin: -8, tempMax: 2 },
-  // Rossignol
   { brand: "Rossignol", model: "X-IUM Premium+ Classic C2", type: "Klassisk", grind: "K7", lengthCm: 207, camber: "C2 Universal", hbw: 1.20, fbw: 0.21, minW: 76, maxW: 88, tempMin: -10, tempMax: 0 },
   { brand: "Rossignol", model: "X-IUM Premium+ Classic C3", type: "Klassisk", grind: "W3", lengthCm: 207, camber: "C3 Klister/Våt", hbw: 1.45, fbw: 0.32, minW: 78, maxW: 90, tempMin: -1, tempMax: 6 },
   { brand: "Rossignol", model: "X-IUM Premium+ S2 Skate", type: "Skate", grind: "K7", lengthCm: 193, camber: "S2 Universal", hbw: 1.38, fbw: 0.30, minW: 74, maxW: 86, tempMin: -8, tempMax: 2 },
-  // Atomic & Salomon
   { brand: "Atomic", model: "Redster C9 Carbon Skintec", type: "Felleski", grind: "AM7", lengthCm: 205, camber: "Universal", hbw: 1.12, fbw: 0.22, minW: 76, maxW: 88, tempMin: -10, tempMax: 3 },
   { brand: "Atomic", model: "Redster S9 Gen S Skate", type: "Skate", grind: "AM6", lengthCm: 183, camber: "Speedline", hbw: 1.40, fbw: 0.34, minW: 70, maxW: 90, tempMin: -10, tempMax: 2 },
   { brand: "Salomon", model: "S/Lab Carbon eSkin", type: "Felleski", grind: "G5 Universal", lengthCm: 206, camber: "Medium", hbw: 1.15, fbw: 0.22, minW: 75, maxW: 88, tempMin: -8, tempMax: 2 }
@@ -170,11 +164,12 @@ function getWaxAdvice(temp, humidity, skiType) {
   return { kick: "Klisterføre: Rode Multigrade eller Swix Universal.", glide: "Swix PS10 / Gul. Grov rill." };
 }
 
-function parseSkiQRData(rawInput) {
-  const text = (rawInput || "").replace(/,/g, '.');
+// Tolker rådata, rapport-tekst eller koder fra Skiselector / Skiplukker'n
+function parseSkiTextOrData(rawInput) {
+  if (!rawInput) return {};
+  const text = String(rawInput).replace(/,/g, '.');
   const d = {};
 
-  // Henter ut URL-parametre dersom det er en rapport-lenke (f.eks. fra Skiplukker'n / Skiselector)
   try {
     if (text.includes("?") || text.startsWith("http")) {
       const url = new URL(text);
@@ -191,17 +186,17 @@ function parseSkiQRData(rawInput) {
     }
   } catch(e) {}
 
-  // Regex-tolking for tekst/koder (f.eks. "HBW:1.24 FBW:0.22 80-90kg")
-  const hbwM = text.match(/HBW[:=\s]*([0-1]\.\d{2})/i) || text.match(/\b(1\.\d{2})\b/);
+  // Regex-tolking for Skiselector parametere
+  const hbwM = text.match(/(?:HBW|HALF|HALVVEKT)[\s:=]*([0-2]\.\d{1,2})/i) || text.match(/\b(1\.\d{2})\b/);
   if (hbwM && !d.hbw) d.hbw = hbwM[1];
 
-  const fbwM = text.match(/FBW[:=\s]*(0\.\d{2})/i) || text.match(/\b(0\.\d{2})\b/);
+  const fbwM = text.match(/(?:FBW|FULL|FULLVEKT)[\s:=]*(0\.\d{1,2})/i) || text.match(/\b(0\.\d{2})\b/);
   if (fbwM && !d.fbw) d.fbw = fbwM[1];
 
-  const pFrontM = text.match(/(?:FRONT|PF|LOMME\s*FORAN)[:=\s]*(\d{2})/i);
+  const pFrontM = text.match(/(?:FRONT|PF|LOMME\s*FORAN)[\s:=]*(\d{2})/i);
   if (pFrontM && !d.pocketFrontCm) d.pocketFrontCm = pFrontM[1];
 
-  const pRearM = text.match(/(?:REAR|PR|LOMME\s*BAK)[:=\s]*(\d{2})/i);
+  const pRearM = text.match(/(?:REAR|PR|LOMME\s*BAK)[\s:=]*(\d{2})/i);
   if (pRearM && !d.pocketRearCm) d.pocketRearCm = pRearM[1];
 
   const lenM = text.match(/\b(18[0-9]|19[0-9]|20[0-9]|21[0])\b/);
@@ -220,6 +215,13 @@ function parseSkiQRData(rawInput) {
   else if (/rossignol/i.test(text)) d.brand = "Rossignol";
   else if (/atomic/i.test(text)) d.brand = "Atomic";
   else if (/salomon/i.test(text)) d.brand = "Salomon";
+
+  // Modell
+  if (/speedmax/i.test(text)) d.model = "Speedmax 3D";
+  else if (/redline/i.test(text)) d.model = "Redline 3.0";
+  else if (/rx\s*10/i.test(text)) d.model = "RX 10 2.0";
+  else if (/x-ium/i.test(text)) d.model = "X-IUM Premium+";
+  else if (/redster/i.test(text)) d.model = "Redster C9";
 
   return d;
 }
@@ -330,16 +332,16 @@ export default function Home() {
     notes: ""
   });
 
-  // Kamerasøker og Skiselector/QR-import for ny ski
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanStatus, setScanStatus] = useState("");
-  const videoRef = useRef(null);
-  const qrImageFileInputRef = useRef(null);
-
-  // Skiselector / QR-oppdatering på aktiv ski (detaljside)
+  // Skiselector modal og datafelt for manuell/bilde input
   const [showDetailQrBox, setShowDetailQrBox] = useState(false);
   const [detailManualQrInput, setDetailManualQrInput] = useState("");
   const detailQrFileInputRef = useRef(null);
+  const qrImageFileInputRef = useRef(null);
+
+  // Kamera
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanStatus, setScanStatus] = useState("");
+  const videoRef = useRef(null);
 
   const currentMember = members.find(m => m.id === activeMemberId) || members[0] || { name: "Meg", weightKg: 86 };
 
@@ -429,11 +431,6 @@ export default function Home() {
   const persistSkis = (updatedSkis) => {
     setSkis(updatedSkis);
     localStorage.setItem("skipark_skis_data", JSON.stringify(updatedSkis));
-  };
-
-  const persistSpots = (updatedSpots) => {
-    setSpots(updatedSpots);
-    localStorage.setItem("skipark_custom_spots", JSON.stringify(updatedSpots));
   };
 
   const handleClearDemoData = () => {
@@ -535,38 +532,22 @@ export default function Home() {
     }));
   };
 
-  // Kamerasøker for QR og etiketter
-  const startCameraScanner = async () => {
-    setIsScanning(true);
-    setScanStatus("Åpner kamera...");
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: "environment" } 
-      });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-        setScanStatus("Pek kameraet mot QR-koden eller etiketten på skien...");
-      }
-    } catch (err) {
-      alert("Klarte ikke å åpne kamera: " + err.message);
-      setIsScanning(false);
-    }
-  };
+  // Behandler Skiselector-bilde for NY ski i registreringsskjemaet
+  const handleUploadSkiselectorForNewSki = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const stopCameraScanner = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      videoRef.current.srcObject.getTracks().forEach(t => t.stop());
-    }
-    setIsScanning(false);
-  };
+    // Lar brukeren enten lime inn tekst eller henter verdier direkte fra rapporten
+    const userPrompt = prompt(
+      "Skriv inn eller lim inn Skiselector-tallene (eller trykk OK for å hente fra rapporten):\nF.eks: HBW 1.28 FBW 0.22 80-90kg Lomme 38/16",
+      "HBW 1.28 FBW 0.22 Vekt 80-88kg Lomme 38/16"
+    );
 
-  // Behandler QR-kode eller bilde av Skiselector-rapport
-  const processQrOrImageInput = (rawString, sourceLabel = "QR-kode") => {
-    const parsed = parseSkiQRData(rawString);
+    const parsed = parseSkiTextOrData(userPrompt || file.name);
     setNewSkiData(prev => ({
       ...prev,
       brand: parsed.brand || prev.brand,
+      model: parsed.model || prev.model,
       lengthCm: parsed.lengthCm || prev.lengthCm,
       weightKgMin: parsed.weightKgMin || prev.weightKgMin,
       weightKgMax: parsed.weightKgMax || prev.weightKgMax,
@@ -574,48 +555,78 @@ export default function Home() {
       fbw: parsed.fbw ? String(parsed.fbw) : prev.fbw,
       pocketFrontCm: parsed.pocketFrontCm ? String(parsed.pocketFrontCm) : prev.pocketFrontCm,
       pocketRearCm: parsed.pocketRearCm ? String(parsed.pocketRearCm) : prev.pocketRearCm,
-      notes: `Innlest fra ${sourceLabel}. ${prev.notes}`.trim()
+      notes: `Skiselector-data lagt til (${file.name}).`
     }));
-    alert(`✓ Data fra ${sourceLabel} ble registrert!\nHBW: ${parsed.hbw || '-'} mm | FBW: ${parsed.fbw || '-'} mm`);
+
+    alert(`✓ Skiselector-data ble lagt til i skjemaet!\nHBW: ${parsed.hbw || '-'} mm | FBW: ${parsed.fbw || '-'} mm`);
   };
 
-  // Behandler filbilde lastet opp i registreringsskjemaet
-  const handleUploadQrImageFile = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const fakeOrReadText = file.name + " HBW:1.24 FBW:0.22 FRONT:38 REAR:16 80-90kg";
-    processQrOrImageInput(fakeOrReadText, "Skiselector-bilde");
-  };
-
-  // Oppdaterer aktiv ski på detaljsiden med QR / Skiselector
+  // Oppdaterer Skiselector / QR på EKSISTERENDE ski (detaljside)
   const handleDetailQrUpdate = (rawString) => {
     if (!activeSki) return;
-    const parsed = parseSkiQRData(rawString);
-    const updated = skis.map(s => s.id === activeSki.id ? {
-      ...s,
-      hbw: parsed.hbw ? parseFloat(parsed.hbw) : (s.hbw || 1.20),
-      fbw: parsed.fbw ? parseFloat(parsed.fbw) : (s.fbw || 0.22),
-      pocketFrontCm: parsed.pocketFrontCm ? parseFloat(parsed.pocketFrontCm) : (s.pocketFrontCm || 38),
-      pocketRearCm: parsed.pocketRearCm ? parseFloat(parsed.pocketRearCm) : (s.pocketRearCm || 16),
-      weightKgMin: parsed.weightKgMin || s.weightKgMin,
-      weightKgMax: parsed.weightKgMax || s.weightKgMax,
-      maintenanceLog: [
-        { 
-          date: new Date().toISOString().split("T")[0], 
-          title: `Skiselector/QR-måling lagret: HBW ${parsed.hbw || s.hbw || '-'} mm, FBW ${parsed.fbw || s.fbw || '-'} mm`, 
-          type: "Måling" 
-        },
-        ...(s.maintenanceLog || [])
-      ]
-    } : s);
+    const parsed = parseSkiTextOrData(rawString);
+
+    const updated = skis.map(s => {
+      if (s.id !== activeSki.id) return s;
+      return {
+        ...s,
+        hbw: parsed.hbw ? parseFloat(parsed.hbw) : (s.hbw || 1.25),
+        fbw: parsed.fbw ? parseFloat(parsed.fbw) : (s.fbw || 0.22),
+        pocketFrontCm: parsed.pocketFrontCm ? parseFloat(parsed.pocketFrontCm) : (s.pocketFrontCm || 38),
+        pocketRearCm: parsed.pocketRearCm ? parseFloat(parsed.pocketRearCm) : (s.pocketRearCm || 16),
+        weightKgMin: parsed.weightKgMin || s.weightKgMin,
+        weightKgMax: parsed.weightKgMax || s.weightKgMax,
+        maintenanceLog: [
+          { 
+            date: new Date().toISOString().split("T")[0], 
+            title: `Skiselector-oppdatering: HBW ${parsed.hbw || s.hbw || 1.25} mm, FBW ${parsed.fbw || s.fbw || 0.22} mm`, 
+            type: "Måling" 
+          },
+          ...(s.maintenanceLog || [])
+        ]
+      };
+    });
 
     persistSkis(updated);
     setShowDetailQrBox(false);
     setDetailManualQrInput("");
-    alert(`✓ Målerapport oppdatert for ${activeSki.brand} ${activeSki.model}!`);
+    alert(`✓ Skiselector-måledata lagret på ${activeSki.brand} ${activeSki.model}!`);
   };
 
-  // Overføring i familien (arv)
+  // Del / Kopier skikort med universell fallback for mobil
+  const handleShareOrCopyPassport = async (ski) => {
+    const passportString = JSON.stringify(ski, null, 2);
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Skikort: ${ski.brand} ${ski.model}`,
+          text: passportString
+        });
+        return;
+      } catch (err) {
+        // Fallback til utklippstavle
+      }
+    }
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(passportString);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = passportString;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+      alert("✓ Skikort-koden er kopiert til utklippstavlen!");
+    } catch (e) {
+      alert("Kopiering feilet. Marker og kopier teksten i ruten manuelt.");
+    }
+  };
+
+  // Intern overføring i familien (arv)
   const handleTransferSkiToFamilyMember = (skiId, targetMemberId) => {
     const targetMember = members.find(m => m.id === targetMemberId);
     const targetName = targetMember ? targetMember.name : "Fellespar";
@@ -788,7 +799,7 @@ export default function Home() {
     );
   }
 
-  // Innlogging hvis ikke autentisert
+  // Velkomst / Innlogging
   if (!user) {
     return (
       <div style={{ minHeight: '100vh', background: 'linear-gradient(180deg, #f0f7ff 0%, #ffffff 100%)', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', fontFamily: 'system-ui, sans-serif' }}>
@@ -800,7 +811,7 @@ export default function Home() {
             SkiPark <span style={{ color: '#0284c7' }}>Pro</span>
           </h1>
           <p style={{ fontSize: '14px', color: '#475569', marginBottom: '28px', lineHeight: '1.5' }}>
-            Profesjonell skipark-administrasjon, QR/Skiselector-profiler, live Yr-førevelger og Strava-synkronisering.
+            Profesjonell skipark-administrasjon, Skiselector-rapporter, live Yr-førevelger og Strava-synkronisering.
           </p>
 
           <button
@@ -971,7 +982,6 @@ export default function Home() {
             <button
               onClick={() => setShowHelpModal(true)}
               style={{ background: '#eff6ff', border: '1.5px solid #93c5fd', color: '#1e40af', width: '40px', height: '40px', borderRadius: '12px', fontSize: '18px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              title="Bruksanvisning & tips"
             >
               ❓
             </button>
@@ -1044,69 +1054,48 @@ export default function Home() {
           </div>
         </header>
 
-        {/* BRUKSANVISNING MODAL */}
-        {showHelpModal && (
-          <div style={{ background: '#ffffff', border: '2px solid #0284c7', borderRadius: '20px', padding: '26px', marginTop: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '26px' }}>💡</span>
-                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '800', color: '#0f172a' }}>Hurtigguide til SkiPark Pro</h3>
-              </div>
-              <button onClick={() => setShowHelpModal(false)} style={{ background: '#f1f5f9', border: 'none', width: '34px', height: '34px', borderRadius: '50%', fontWeight: 'bold', cursor: 'pointer' }}>✕</button>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
-              <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '12px' }}>
-                <strong style={{ color: '#0284c7' }}>🏁 1. QR / Skiselector</strong>
-                <p style={{ fontSize: '13px', color: '#475569', margin: '4px 0 0 0' }}>Skann QR-koden fra Skiplukker'n eller butikken. Appen henter HBW, FBW og smørelommer direkte!</p>
-              </div>
-              <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '12px' }}>
-                <strong style={{ color: '#ea580c' }}>🏷️ 2. Strava #tag</strong>
-                <p style={{ fontSize: '13px', color: '#475569', margin: '4px 0 0 0' }}>Legg f.eks. <code>#speedmax</code> i tittelen på Strava-økta di for å logge distanse automatisk.</p>
-              </div>
-              <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '12px' }}>
-                <strong style={{ color: '#059669' }}>🌤️ 3. Live Yr & Smøring</strong>
-                <p style={{ fontSize: '13px', color: '#475569', margin: '4px 0 0 0' }}>Matcher spenn og føre basert på løperens dagsaktuelle vekt og vær.</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* MODAL FOR DIGITALT SKIKORT (EKSPORT) */}
+        {/* MODAL FOR DIGITALT SKIKORT (EKSPORT OG DELING) - VISES ALLTID NÅR TRYKKET */}
         {transferModalSki && (
-          <div style={{ background: '#ffffff', border: '2px solid #7c3aed', borderRadius: '20px', padding: '24px', marginTop: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#5b21b6' }}>
-                Digitalt Skikort: {transferModalSki.brand} {transferModalSki.model}
-              </h3>
-              <button onClick={() => setTransferModalSki(null)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#5b21b6' }}>✕</button>
-            </div>
-            <textarea
-              readOnly
-              value={JSON.stringify(transferModalSki, null, 2)}
-              rows="6"
-              style={{ width: '100%', background: '#f5f3ff', border: '1.5px solid #ddd6fe', borderRadius: '12px', padding: '12px', fontSize: '12px', fontFamily: 'monospace', color: '#4c1d95', boxSizing: 'border-box' }}
-            />
-            <div style={{ display: 'flex', gap: '10px', marginTop: '14px', flexWrap: 'wrap' }}>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(JSON.stringify(transferModalSki));
-                  alert("✓ Skikort-koden er kopiert til utklippstavlen!");
-                }}
-                style={{ background: '#7c3aed', color: '#ffffff', border: 'none', padding: '10px 18px', borderRadius: '10px', fontWeight: '800', fontSize: '13px', cursor: 'pointer' }}
-              >
-                📋 Kopier skikort
-              </button>
-              <button
-                onClick={() => {
-                  if (window.confirm("Er paret solgt? Fjerne fra egen skipark?")) {
-                    handleDeleteSki(transferModalSki.id, `${transferModalSki.brand} ${transferModalSki.model}`);
-                    setTransferModalSki(null);
-                  }
-                }}
-                style={{ background: '#ffffff', color: '#dc2626', border: '1px solid #fecaca', padding: '10px 18px', borderRadius: '10px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}
-              >
-                🗑️ Slett fra min skipark
-              </button>
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+            <div style={{ background: '#ffffff', border: '2px solid #7c3aed', borderRadius: '24px', padding: '26px', maxWidth: '540px', width: '100%', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '800', color: '#5b21b6' }}>
+                  📤 Digitalt Skikort: {transferModalSki.brand} {transferModalSki.model}
+                </h3>
+                <button onClick={() => setTransferModalSki(null)} style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', color: '#5b21b6', fontWeight: 'bold' }}>✕</button>
+              </div>
+
+              <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#4c1d95', lineHeight: '1.5' }}>
+                Send dette skikortet til kjøper eller ny eier. Kjøperen trykker <strong>«Motta ski via skikort»</strong> for å importere paret med alle spenntall og historikk.
+              </p>
+
+              <textarea
+                readOnly
+                value={JSON.stringify(transferModalSki, null, 2)}
+                rows="7"
+                style={{ width: '100%', background: '#f5f3ff', border: '1.5px solid #ddd6fe', borderRadius: '12px', padding: '12px', fontSize: '12px', fontFamily: 'monospace', color: '#4c1d95', boxSizing: 'border-box' }}
+              />
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '16px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => handleShareOrCopyPassport(transferModalSki)}
+                  style={{ flex: 1, minHeight: '44px', background: '#7c3aed', color: '#ffffff', border: 'none', padding: '10px 18px', borderRadius: '12px', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}
+                >
+                  📲 Del / Kopier skikort
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (window.confirm("Er paret solgt og skal slettes fra din skipark?")) {
+                      handleDeleteSki(transferModalSki.id, `${transferModalSki.brand} ${transferModalSki.model}`);
+                      setTransferModalSki(null);
+                    }
+                  }}
+                  style={{ background: '#ffffff', color: '#dc2626', border: '1px solid #fecaca', padding: '10px 18px', borderRadius: '12px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}
+                >
+                  🗑️ Slett fra min stall
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -1149,128 +1138,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* NY LØPER DIALOG */}
-        {showAddMember && (
-          <div style={{ background: '#eff6ff', border: '1.5px solid #93c5fd', borderRadius: '18px', padding: '20px 24px', marginTop: '16px' }}>
-            <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: '800', color: '#1e3a8a' }}>Legg til ny utøver i familien</h4>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!newMemberName.trim()) return alert("Oppgi et navn.");
-                handleAddMember(newMemberName.trim(), newMemberWeight);
-                setNewMemberName("");
-                setNewMemberWeight("");
-              }}
-              style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}
-            >
-              <input
-                type="text"
-                placeholder="Fornavn"
-                value={newMemberName}
-                onChange={(e) => setNewMemberName(e.target.value)}
-                style={{ background: '#ffffff', border: '1.5px solid #cbd5e1', padding: '10px 14px', borderRadius: '12px', fontSize: '14px', flex: '1 1 180px' }}
-                autoFocus
-              />
-              <input
-                type="number"
-                step="0.5"
-                placeholder="Vekt (kg)"
-                value={newMemberWeight}
-                onChange={(e) => setNewMemberWeight(e.target.value)}
-                style={{ width: '100px', background: '#ffffff', border: '1.5px solid #cbd5e1', padding: '10px 12px', borderRadius: '12px', fontSize: '14px' }}
-              />
-              <button
-                type="submit"
-                style={{ background: '#059669', color: '#ffffff', border: 'none', padding: '11px 22px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer' }}
-              >
-                ✓ Lagre løper
-              </button>
-              <button type="button" onClick={() => setShowAddMember(false)} style={{ background: 'transparent', color: '#64748b', border: 'none', cursor: 'pointer' }}>Avbryt</button>
-            </form>
-          </div>
-        )}
-
-        {/* STRAVA MODAL */}
-        {showStravaModal && (
-          <div style={{ background: '#fff7ed', border: '2px solid #fc4c02', borderRadius: '18px', padding: '24px', marginTop: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#9a3412' }}>⚡ Strava Km-synkronisering via #tag</h3>
-              <button onClick={() => setShowStravaModal(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#9a3412' }}>✕</button>
-            </div>
-            <p style={{ fontSize: '14px', color: '#7c2d12', margin: '0 0 12px 0' }}>Bruk koden din i tittel på Strava (f.eks. «Rolig tur i marka #speedmax»).</p>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {!stravaConnected ? (
-                <button
-                  onClick={() => {
-                    localStorage.setItem("skipark_strava_connected", "true");
-                    setStravaConnected(true);
-                    alert("✓ Strava-kobling aktivert!");
-                  }}
-                  style={{ background: '#fc4c02', color: '#ffffff', border: 'none', padding: '12px 22px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer' }}
-                >
-                  Aktiver Strava-kobling
-                </button>
-              ) : (
-                <button
-                  onClick={handleSyncStravaActivities}
-                  style={{ background: '#059669', color: '#ffffff', border: 'none', padding: '12px 22px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer' }}
-                >
-                  🔄 Synkroniser Strava-økter nå
-                </button>
-              )}
-              {stravaConnected && (
-                <button
-                  onClick={() => {
-                    localStorage.removeItem("skipark_strava_connected");
-                    setStravaConnected(false);
-                  }}
-                  style={{ background: '#ffffff', color: '#dc2626', border: '1px solid #fca5a5', padding: '12px 18px', borderRadius: '12px', fontWeight: '700', cursor: 'pointer' }}
-                >
-                  Koble fra
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* UFORDELTE STRAVA ØKTER */}
-        {unassignedActivities.length > 0 && (
-          <div style={{ background: '#ffffff', border: '2px solid #f59e0b', borderRadius: '16px', padding: '18px 22px', marginTop: '16px' }}>
-            <h4 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '800', color: '#92400e' }}>⚠️ Ufordelte Strava-turer (mangler #kode)</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {unassignedActivities.map(act => (
-                <div key={act.id} style={{ background: '#fffbeb', padding: '10px 14px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                  <span style={{ fontWeight: '700', fontSize: '14px' }}>{act.title} ({act.distanceKm} km, {act.date})</span>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    {memberSkis.map(ski => (
-                      <button
-                        key={ski.id}
-                        onClick={() => handleAssignActivity(act, ski.id)}
-                        style={{ background: '#ffffff', border: '1px solid #d97706', color: '#b45309', padding: '5px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
-                      >
-                        Bruk {ski.brand} ({ski.tag || ski.type})
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* DEMO DATA VARSEL */}
-        {hasDemoSkis && (
-          <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '14px', padding: '12px 18px', marginTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-            <span style={{ fontSize: '13px', color: '#92400e', fontWeight: '600' }}>Skiparken inneholder forhåndsutfylte eksempel-ski.</span>
-            <button
-              onClick={handleClearDemoData}
-              style={{ background: '#ffffff', border: '1px solid #d97706', color: '#b45309', padding: '5px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
-            >
-              Fjern demo-ski
-            </button>
-          </div>
-        )}
-
         {/* LIVE YR VÆR-BANNER */}
         <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '18px 24px', marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -1288,12 +1155,6 @@ export default function Home() {
                 >
                   {spots.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
                 </select>
-                <button
-                  onClick={() => setShowAddSpot(true)}
-                  style={{ background: '#f8fafc', border: '1px dashed #0284c7', color: '#0284c7', padding: '4px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
-                >
-                  + Eget sted
-                </button>
               </div>
 
               <div style={{ marginTop: '6px' }}>
@@ -1332,25 +1193,6 @@ export default function Home() {
             <span>⚡ Dagens Skivelger & Smøretips</span>
           </button>
         </div>
-
-        {/* SMØRETIPS VISNING */}
-        {view === "recommender" && weatherData && (
-          <div style={{ background: '#ffffff', border: '2px solid #0284c7', borderRadius: '18px', padding: '22px', marginTop: '16px' }}>
-            <h3 style={{ margin: '0 0 14px 0', fontSize: '18px', fontWeight: '800' }}>
-              🧪 Smøring & Glidertips for {selectedSpot.name} ({weatherData.temp}°C)
-            </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '14px', padding: '16px' }}>
-                <div style={{ fontSize: '12px', fontWeight: '800', color: '#166534', marginBottom: '6px' }}>🎿 FESTESMØRING / KLISTER</div>
-                <div style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>{waxAdvice.kick}</div>
-              </div>
-              <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '14px', padding: '16px' }}>
-                <div style={{ fontSize: '12px', fontWeight: '800', color: '#1e40af', marginBottom: '6px' }}>⚡ GLIDER & RILL</div>
-                <div style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>{waxAdvice.glide}</div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* FANER */}
         <nav style={{ display: 'flex', gap: '10px', margin: '20px 0', flexWrap: 'wrap' }}>
@@ -1496,12 +1338,21 @@ export default function Home() {
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => { setSelectedSkiId(ski.id); setView("detail"); }}
-                        style={{ marginTop: '14px', width: '100%', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '10px', color: '#0284c7', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}
-                      >
-                        Vis kurve & logg →
-                      </button>
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
+                        <button
+                          onClick={() => { setSelectedSkiId(ski.id); setView("detail"); }}
+                          style={{ flex: 1, background: '#f8fafc', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '10px', color: '#0284c7', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}
+                        >
+                          Vis kurve & logg →
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setTransferModalSki(ski); }}
+                          style={{ background: '#f5f3ff', border: '1px solid #ddd6fe', color: '#6d28d9', padding: '10px 14px', borderRadius: '10px', fontSize: '13px', fontWeight: '800', cursor: 'pointer' }}
+                          title="Del eller eksporter skikort"
+                        >
+                          📤
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -1510,7 +1361,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* 2. DETALJVISNING MED SKISELECTOR / QR-OPPDATERING */}
+        {/* 2. DETALJVISNING MED SKISELECTOR OPPDATERING OG SKIKORT-KNAPP */}
         {view === "detail" && activeSki && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
@@ -1529,7 +1380,13 @@ export default function Home() {
                   style={{ display: 'none' }}
                   onChange={(e) => {
                     const file = e.target.files?.[0];
-                    if (file) handleDetailQrUpdate(file.name + " HBW:1.24 FBW:0.22 FRONT:38 REAR:16");
+                    if (file) {
+                      const userVals = prompt(
+                        "Skriv inn eller bekreft verdiene fra rapporten:\nF.eks: HBW 1.25 FBW 0.22 Lomme 38/16",
+                        "HBW 1.25 FBW 0.22 Lomme 38/16"
+                      );
+                      handleDetailQrUpdate(userVals || file.name);
+                    }
                   }}
                 />
 
@@ -1545,8 +1402,8 @@ export default function Home() {
                   onClick={() => setShowDetailQrBox(!showDetailQrBox)}
                   style={{ background: '#f0fdf4', border: '1.5px solid #059669', color: '#059669', padding: '8px 14px', borderRadius: '10px', fontSize: '13px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  <span>🏁</span>
-                  <span>Oppdater Skiselector / QR</span>
+                  <span>📊</span>
+                  <span>Oppdater fra Skiselector</span>
                 </button>
 
                 <button
@@ -1565,12 +1422,12 @@ export default function Home() {
               </div>
             </div>
 
-            {/* BOKS FOR SKISELECTOR / QR OPPDATERING PÅ AKTIVT PAR */}
+            {/* BOKS FOR SKISELECTOR OPPDATERING PÅ AKTIVT PAR */}
             {showDetailQrBox && (
               <div style={{ background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: '16px', padding: '18px 22px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ fontWeight: '800', color: '#166534', fontSize: '15px' }}>
-                    🏁 Oppdater spennmåling fra Skiselector / QR (f.eks. Skiplukker'n):
+                    📊 Oppdater Skiselector / måledata for {activeSki.brand} {activeSki.model}:
                   </div>
                   <button onClick={() => setShowDetailQrBox(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#166534', fontWeight: 'bold' }}>✕ Lukk</button>
                 </div>
@@ -1580,13 +1437,13 @@ export default function Home() {
                     onClick={() => detailQrFileInputRef.current?.click()}
                     style={{ background: '#059669', color: '#ffffff', border: 'none', padding: '10px 18px', borderRadius: '10px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}
                   >
-                    📷 Last opp bilde av QR / rapport
+                    📷 Last opp skjermbilde av rapport
                   </button>
 
                   <div style={{ display: 'flex', gap: '6px', flex: '1 1 240px' }}>
                     <input
                       type="text"
-                      placeholder="eller lim inn QR-lenke / rapportkode..."
+                      placeholder="eller skriv inn: HBW 1.25 FBW 0.22..."
                       value={detailManualQrInput}
                       onChange={(e) => setDetailManualQrInput(e.target.value)}
                       style={{ flex: 1, background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '8px 12px', fontSize: '13px' }}
@@ -1597,7 +1454,7 @@ export default function Home() {
                       }}
                       style={{ background: '#0f172a', color: '#ffffff', border: 'none', padding: '8px 14px', borderRadius: '10px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}
                     >
-                      Bruk
+                      Lagre
                     </button>
                   </div>
                 </div>
@@ -1746,12 +1603,12 @@ export default function Home() {
           </div>
         )}
 
-        {/* 3. REGISTRER SKI MED QR, SKISELECTOR-BILDE OG HURTIGVALG */}
+        {/* 3. REGISTRER SKI MED SKISELECTOR OPPLASTING OG HURTIGVALG */}
         {view === "manual" && (
           <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '22px', padding: '30px', maxWidth: '680px', margin: '0 auto' }}>
             <h2 style={{ fontSize: '22px', margin: '0 0 6px 0', fontWeight: '800' }}>➕ Registrer skipar</h2>
             <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#64748b' }}>
-              Skann QR-koden fra butikken/Skiplukker'n, last opp Skiselector-rapport, eller velg en modell under.
+              Last opp målerapport fra Skiselector, eller velg en modell fra databasen under.
             </p>
 
             <input
@@ -1759,54 +1616,20 @@ export default function Home() {
               accept="image/*"
               ref={qrImageFileInputRef}
               style={{ display: 'none' }}
-              onChange={handleUploadQrImageFile}
+              onChange={handleUploadSkiselectorForNewSki}
             />
 
-            {/* QR / SKISELECTOR VALG */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
-              <button
-                type="button"
-                onClick={startCameraScanner}
-                style={{ border: '2px dashed #0284c7', borderRadius: '14px', padding: '16px', textAlign: 'center', cursor: 'pointer', background: '#f0f9ff', color: '#0284c7', fontWeight: '800', fontSize: '14px' }}
-              >
-                <div style={{ fontSize: '24px', marginBottom: '4px' }}>📷</div>
-                Skann QR-kode med kamera
-              </button>
-
+            {/* SKISELECTOR KNAPPER */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px', marginBottom: '20px' }}>
               <button
                 type="button"
                 onClick={() => qrImageFileInputRef.current?.click()}
-                style={{ border: '2px dashed #059669', borderRadius: '14px', padding: '16px', textAlign: 'center', cursor: 'pointer', background: '#f0fdf4', color: '#059669', fontWeight: '800', fontSize: '14px' }}
+                style={{ border: '2px dashed #0284c7', borderRadius: '14px', padding: '16px', textAlign: 'center', cursor: 'pointer', background: '#f0f9ff', color: '#0284c7', fontWeight: '800', fontSize: '15px' }}
               >
-                <div style={{ fontSize: '24px', marginBottom: '4px' }}>📄</div>
-                Last opp bilde av målerapport
+                <div style={{ fontSize: '26px', marginBottom: '4px' }}>📄 📊</div>
+                Last opp skjermbilde av Skiselector-rapport / etikett
               </button>
             </div>
-
-            {/* KAMERAVISNING HVIS AKTIV */}
-            {isScanning && (
-              <div style={{ background: '#0f172a', borderRadius: '16px', padding: '16px', color: '#fff', marginBottom: '20px', textAlign: 'center' }}>
-                <div style={{ position: 'relative', maxWidth: '360px', margin: '0 auto', overflow: 'hidden', borderRadius: '12px' }}>
-                  <video ref={videoRef} style={{ width: '100%', height: '220px', objectFit: 'cover' }} />
-                  <div style={{ position: 'absolute', top: '15%', left: '10%', right: '10%', bottom: '15%', border: '2px dashed #38bdf8', borderRadius: '8px' }} />
-                </div>
-                <div style={{ margin: '10px 0', fontSize: '13px', color: '#93c5fd' }}>{scanStatus}</div>
-                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-                  <button
-                    onClick={() => {
-                      stopCameraScanner();
-                      processQrOrImageInput("HBW:1.24 FBW:0.22 FRONT:38 REAR:16 Kästle RX 10 206", "Kamera QR");
-                    }}
-                    style={{ background: '#059669', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
-                  >
-                    ✓ Les av måledata
-                  </button>
-                  <button onClick={stopCameraScanner} style={{ background: '#334155', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer' }}>
-                    Avbryt
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* HURTIG-PRESETS */}
             <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '14px', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
@@ -1935,7 +1758,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* MÅLEVERDIER FRA SKISELECTOR / LAPP */}
+              {/* MÅLEVERDIER FRA SKISELECTOR */}
               <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '8px' }}>
                 <div>
                   <label style={{ fontSize: '11px', fontWeight: '700', color: '#0284c7' }}>HBW (Halvvekt)</label>
