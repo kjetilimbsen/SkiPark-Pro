@@ -42,6 +42,75 @@ const INITIAL_MEMBERS = [
   { id: "m-2", name: "Junior", weightKg: 54 }
 ];
 
+const FAQ_ITEMS = [
+  {
+    category: "skiselector",
+    categoryLabel: "📏 Skiselector & Måledata",
+    question: "Hva betyr HBW (Half Body Weight)?",
+    answer: "HBW er spennhøyden målt i millimeter når skien belastes med halv kroppsvekt (stakestilling med lik vekt på begge ski). Typiske verdier er 1.10–1.25 mm for kald tørrvoks, 1.25–1.45 mm for allround/klister, og 1.30–1.60 mm for skøyteski. En ideell HBW sikrer at smøringen ikke subber og bremser når du staker eller glir flatt."
+  },
+  {
+    category: "skiselector",
+    categoryLabel: "📏 Skiselector & Måledata",
+    question: "Hva betyr FBW (Full Body Weight / Sluttspenn)?",
+    answer: "FBW er spennhøyden i millimeter når du legger 100% av kroppsvekten på én ski (fraspark). For klassiske tørrvoksski bør FBW være lav (0.15–0.25 mm) for at du skal få sikkert spikerfeste uten å måtte tråkke urimelig hardt. For klisterski må FBW være litt høyere (0.25–0.40 mm) for å unngå klistersubbing i sporet."
+  },
+  {
+    category: "skiselector",
+    categoryLabel: "📏 Skiselector & Måledata",
+    question: "Hva betyr smørelomme foran og bak (cm)?",
+    answer: "Smørelommer angir hvor smøresonen skal legges målt i centimeter foran og bak skiens balansepunkt (0-punkt). Typisk er foran 25–40 cm og bak 10–20 cm. Ved kald tørrvoks brukes ofte full lomme, mens ved klister og fuktig snø forkortes lommen foran med 5–10 cm for maksimal glid."
+  },
+  {
+    category: "skiselector",
+    categoryLabel: "📏 Skiselector & Måledata",
+    question: "Hvordan fungerer Skiselector OCR-skanningen?",
+    answer: "Du kan laste opp eller ta bilde av målerapporten eller klistrelappen på skien. SkiPark Pro analyserer bildet direkte i nettleseren og henter automatisk ut HBW, FBW, lengde, anbefalt vektintervall og smørelommer, slik at du slipper å skrive inn tallene manuelt."
+  },
+  {
+    category: "skivelger",
+    categoryLabel: "⚡ Skivelger & Føre",
+    question: "Hvordan kårer Skivelgeren dagens beste skipar?",
+    answer: "Skivelgeren henter sanntidsvær fra Yr for valgt sted (temperatur, luftfuktighet, nedbør og snøtype) og sammenligner dette med alle skiene i stallen din. Den vurderer om løperens vekt passer skiens spenn, om temperaturen matcher skiens kammer, samt spennhøyde (HBW/FBW) og slipestruktur."
+  },
+  {
+    category: "skivelger",
+    categoryLabel: "⚡ Skivelger & Føre",
+    question: "Kan jeg skille mellom klassisk og skøyting?",
+    answer: "Ja! I fanen «⚡ Dagens Skivelger» finner du stilartknapper: «Alle», «🎿 Klassisk / Felleski» og «⚡ Skøyting». Hvis du skal ha en skøytetur, filtrerer du på Skøyting for å se hvilket skøytepar i stallen som glir best under dagens forhold."
+  },
+  {
+    category: "skivelger",
+    categoryLabel: "⚡ Skivelger & Føre",
+    question: "Hvordan endrer jeg sted for Yr-vær og smøretips?",
+    answer: "I Yr-værlinjen øverst kan du enten velge et lagret sted fra nedtrekksmenyen, trykke «🔍 Søk sted» for å søke opp hvilken som helst skiløype, bygd eller kommune i Norge, eller trykke «🧭 Min posisjon» for automatisk GPS-posisjonering."
+  },
+  {
+    category: "bindinger",
+    categoryLabel: "⚙️ Bindinger (Move / Shift)",
+    question: "Hva gjør Move/Shift-bindingjustering (+1, 0, -1)?",
+    answer: "Flyttbare bindinger lar deg fintune skiens egenskaper underveis:\n• Posisjon +1 eller +2: Flytter vekten forover for enklere og tryggere feste (ideelt på felleski i motbakker eller trå snø).\n• Posisjon -1 eller -2: Flytter vekten bakover for overlegen glid og høyere toppfart i stakepartier og unnabakker.\n• Posisjon 0: Nøytralt balansepunkt satt fra fabrikk."
+  },
+  {
+    category: "smoring",
+    categoryLabel: "🧪 Smøring & Felleski",
+    question: "Hvordan beregnes smøre- og glidertipsene?",
+    answer: "Tipsene baserer seg på offisielle smøreprofiler for temperatur og luftfuktighet fra Yr. For felleski gis råd om rens og anti-ice for å hindre kladding ved nullføre. For klassiske ski anbefales tørrvoks eller klisterdekke. Glidertipsene inkluderer hardhet (Swix PS5-PS10 / Marathon) og manuell rilling."
+  },
+  {
+    category: "skikort",
+    categoryLabel: "📤 Skikort & Familie",
+    question: "Hva er Digitalt Skikort og familieoverføring?",
+    answer: "Hvert skipar har et unikt digitalt pass med alle måleverdier, loggførte smøringer, slip og Strava-kilometer. Du kan dele koden ved videresalg på Finn/bruktmarked, eller flytte et skipar internt til et annet familiemedlem (f.eks. junior) med full historikk intakt."
+  },
+  {
+    category: "strava",
+    categoryLabel: "🚴 Strava-synkronisering",
+    question: "Hvordan fungerer Strava-logging med #tag?",
+    answer: "Hver ski har en unik emneknagg (f.eks. #speedmax eller #redline). Når du laster opp en økt til Strava, inkluderer du denne taggen i tittelen på økten (f.eks. «Sjusjøen rundt #speedmax»). Når du trykker «Synkroniser Strava», finner SkiPark Pro økten og legger kilometerne direkte inn på det aktuelle paret."
+  }
+];
+
 const INITIAL_SKIS = [
   {
     id: "ski-1",
@@ -317,6 +386,9 @@ export default function Home() {
 
   // Hjelpe-modal
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [faqSearchQuery, setFaqSearchQuery] = useState("");
+  const [faqCategory, setFaqCategory] = useState("all");
+  const [expandedFaq, setExpandedFaq] = useState(null);
 
   // Skikort & Eierskifte
   const [passportModalSki, setPassportModalSki] = useState(null);
@@ -1234,6 +1306,14 @@ export default function Home() {
   const bestSkateSki = memberSkisWithScore.filter(s => s.type === "Skate").sort((a, b) => b.matchScore - a.matchScore)[0];
   const waxAdvice = getWaxAdvice(weatherData?.temp, weatherData?.humidity, bestSki?.type || "Klassisk");
 
+  const filteredFaqs = FAQ_ITEMS.filter(item => {
+    const matchesCat = faqCategory === "all" || item.category === faqCategory;
+    if (!matchesCat) return false;
+    if (!faqSearchQuery.trim()) return true;
+    const q = faqSearchQuery.toLowerCase();
+    return item.question.toLowerCase().includes(q) || item.answer.toLowerCase().includes(q) || item.categoryLabel.toLowerCase().includes(q);
+  });
+
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', color: '#0f172a', padding: '24px 20px', fontFamily: 'system-ui, sans-serif' }}>
       <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
@@ -1251,9 +1331,11 @@ export default function Home() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <button
               onClick={() => setShowHelpModal(true)}
-              style={{ background: '#eff6ff', border: '1.5px solid #93c5fd', color: '#1e40af', width: '38px', height: '38px', borderRadius: '10px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}
+              title="Hjelp & Q&A (Spørsmål og svar om måledata og skivalg)"
+              style={{ background: '#eff6ff', border: '1.5px solid #93c5fd', color: '#0369a1', padding: '8px 12px', borderRadius: '12px', fontSize: '13px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              ❓
+              <span style={{ fontSize: '15px' }}>ℹ️</span>
+              <span>Q&A / Hjelp</span>
             </button>
 
             <button
@@ -1329,6 +1411,116 @@ export default function Home() {
               </button>
               <button onClick={stopCameraScanner} style={{ background: '#334155', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer' }}>
                 Avbryt
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* HJELP & Q&A (FAQ) MODAL */}
+        {showHelpModal && (
+          <div style={{ background: '#ffffff', border: '2px solid #0284c7', borderRadius: '24px', padding: '26px', marginTop: '16px', boxShadow: '0 12px 30px -8px rgba(2, 132, 199, 0.25)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '18px', borderBottom: '1px solid #e2e8f0', paddingBottom: '16px' }}>
+              <div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#e0f2fe', color: '#0369a1', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: '800', marginBottom: '8px' }}>
+                  <span>ℹ️ Brukerveiledning & Q&A</span>
+                </div>
+                <h3 style={{ margin: 0, fontSize: '22px', fontWeight: '900', color: '#0f172a' }}>
+                  Ofte stilte spørsmål & hjelp (Q&A)
+                </h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748b' }}>
+                  Alt om Skiselector, spennhøyder (HBW/FBW), smørelommer, skivelger, bindinger og Strava-synkronisering.
+                </p>
+              </div>
+              <button
+                onClick={() => { setShowHelpModal(false); setFaqSearchQuery(""); }}
+                style={{ background: '#f1f5f9', border: 'none', borderRadius: '10px', width: '36px', height: '36px', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                title="Lukk hjelp"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* SØKEFELT OG TEMA-FILTER */}
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                placeholder="🔍 Søk i spørsmål og svar (f.eks. HBW, FBW, binding, klister, skøyting, strava)..."
+                value={faqSearchQuery}
+                onChange={(e) => setFaqSearchQuery(e.target.value)}
+                style={{ flex: 1, minWidth: '240px', background: '#f8fafc', border: '1.5px solid #cbd5e1', padding: '10px 14px', borderRadius: '12px', fontSize: '14px', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '16px' }}>
+              {[
+                { id: "all", label: "Alle temaer" },
+                { id: "skiselector", label: "📏 Måledata (HBW/FBW)" },
+                { id: "skivelger", label: "⚡ Skivelger & Føre" },
+                { id: "bindinger", label: "⚙️ Move/Shift Binding" },
+                { id: "smoring", label: "🧪 Smøring & Felle" },
+                { id: "skikort", label: "📤 Skikort & Bytte" },
+                { id: "strava", label: "🚴 Strava Km" }
+              ].map(cat => (
+                <button
+                  key={cat.id}
+                  onClick={() => setFaqCategory(cat.id)}
+                  style={{ background: faqCategory === cat.id ? '#0284c7' : '#f1f5f9', color: faqCategory === cat.id ? '#ffffff' : '#334155', border: '1px solid ' + (faqCategory === cat.id ? '#0284c7' : '#e2e8f0'), padding: '6px 12px', borderRadius: '10px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+
+            {/* FAQ LISTE OVER SPØRSMÅL OG SVAR */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '460px', overflowY: 'auto', paddingRight: '4px' }}>
+              {filteredFaqs.length === 0 ? (
+                <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '14px', textAlign: 'center', color: '#64748b' }}>
+                  Ingen spørsmål matchet søket &quot;{faqSearchQuery}&quot;. Prøv et annet søkeord.
+                </div>
+              ) : (
+                filteredFaqs.map((item, idx) => {
+                  const isOpen = expandedFaq === idx || faqSearchQuery.trim().length > 0;
+                  return (
+                    <div
+                      key={idx}
+                      style={{ background: isOpen ? '#f0f9ff' : '#f8fafc', border: isOpen ? '1.5px solid #7dd3fc' : '1px solid #e2e8f0', borderRadius: '14px', overflow: 'hidden', transition: 'all 0.15s ease' }}
+                    >
+                      <button
+                        onClick={() => setExpandedFaq(expandedFaq === idx ? null : idx)}
+                        style={{ width: '100%', background: 'none', border: 'none', padding: '14px 18px', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', gap: '10px' }}
+                      >
+                        <div>
+                          <div style={{ fontSize: '11px', color: '#0284c7', fontWeight: '800', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                            {item.categoryLabel}
+                          </div>
+                          <div style={{ fontWeight: '800', fontSize: '15px', color: '#0f172a' }}>
+                            {item.question}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: '14px', color: '#0284c7', fontWeight: '900', background: isOpen ? '#e0f2fe' : '#ffffff', width: '28px', height: '28px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {isOpen ? '▲' : '▼'}
+                        </span>
+                      </button>
+                      {isOpen && (
+                        <div style={{ padding: '0 18px 16px 18px', fontSize: '14px', color: '#334155', lineHeight: '1.6', borderTop: '1px solid #e0f2fe', paddingTop: '12px', whiteSpace: 'pre-line' }}>
+                          {item.answer}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div style={{ marginTop: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '14px', borderTop: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '12px', color: '#64748b' }}>
+                Viser {filteredFaqs.length} av {FAQ_ITEMS.length} spørsmål og svar
+              </div>
+              <button
+                onClick={() => { setShowHelpModal(false); setFaqSearchQuery(""); }}
+                style={{ background: '#0284c7', color: '#ffffff', border: 'none', padding: '9px 20px', borderRadius: '10px', fontWeight: '800', fontSize: '13px', cursor: 'pointer' }}
+              >
+                Lukk Q&A
               </button>
             </div>
           </div>
