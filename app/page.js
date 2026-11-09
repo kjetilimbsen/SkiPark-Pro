@@ -342,6 +342,7 @@ export default function Home() {
   const [filter, setFilter] = useState("Alle");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("number");
+  const [recommenderStyle, setRecommenderStyle] = useState("Alle");
 
   // Yr Steder
   const [spots, setSpots] = useState(DEFAULT_SPOTS);
@@ -1000,17 +1001,101 @@ export default function Home() {
     setUnassignedActivities(unassignedActivities.filter(a => a.id !== act.id));
   };
 
-  const calculateMatch = (ski) => {
+  const evaluateSki = (ski) => {
     let score = 100;
-    const isWeightMatch = currentMember.weightKg >= ski.weightKgMin && currentMember.weightKg <= ski.weightKgMax;
-    if (!isWeightMatch) score -= 30;
+    const reasons = [];
+    const warnings = [];
 
-    if (weatherData && ski.tempOptimalMin !== undefined && ski.tempOptimalMax !== undefined) {
-      const temp = weatherData.temp;
-      if (temp < ski.tempOptimalMin) score -= Math.abs(temp - ski.tempOptimalMin) * 8;
-      else if (temp > ski.tempOptimalMax) score -= Math.abs(temp - ski.tempOptimalMax) * 12;
+    const minW = ski.weightKgMin ?? 70;
+    const maxW = ski.weightKgMax ?? 85;
+    const w = currentMember?.weightKg || 75;
+
+    // 1. Vektmatch
+    const isWeightMatch = w >= minW && w <= maxW;
+    if (isWeightMatch) {
+      reasons.push(`Optimal løpervekt (${w} kg matcher skiens spenn på ${minW}–${maxW} kg)`);
+    } else if (w < minW) {
+      const diff = Math.round((minW - w) * 10) / 10;
+      const penalty = Math.min(35, Math.round(diff * 4));
+      score -= penalty;
+      warnings.push(`Løper er ${diff} kg under skiens vektklasse (${minW}–${maxW} kg) – kan oppleves stiv`);
+    } else {
+      const diff = Math.round((w - maxW) * 10) / 10;
+      const penalty = Math.min(40, Math.round(diff * 4.5));
+      score -= penalty;
+      warnings.push(`Løper er ${diff} kg over skiens vektklasse (${minW}–${maxW} kg) – kan gi subbing`);
     }
-    return Math.max(0, Math.round(score));
+
+    // 2. Temperatur- og førematch
+    let isTempMatch = true;
+    if (weatherData && typeof weatherData.temp === 'number') {
+      const t = weatherData.temp;
+      const tMin = ski.tempOptimalMin ?? -12;
+      const tMax = ski.tempOptimalMax ?? 0;
+
+      if (t >= tMin && t <= tMax) {
+        reasons.push(`Perfekt temperaturområde (${t}°C treffer skiens ${tMin}°C til ${tMax}°C)`);
+      } else if (t < tMin) {
+        isTempMatch = false;
+        const diff = Math.round((tMin - t) * 10) / 10;
+        const penalty = Math.min(45, Math.round(diff * 5.5));
+        score -= penalty;
+        warnings.push(`Kaldere enn optimalt (${diff}°C under skiens anbefalte ${tMin}°C)`);
+      } else {
+        isTempMatch = false;
+        const diff = Math.round((t - tMax) * 10) / 10;
+        const penalty = Math.min(50, Math.round(diff * 7));
+        score -= penalty;
+        warnings.push(`Varmere enn optimalt (${diff}°C over skiens anbefalte ${tMax}°C)`);
+      }
+
+      // Spenn (HBW/FBW) vurdering
+      if (ski.hbw) {
+        const hbw = parseFloat(ski.hbw);
+        if (t <= -4 && hbw <= 1.25 && ski.type !== "Skate") {
+          reasons.push(`Lav/medium spennhøyde (HBW ${hbw} mm) gir topp kontaktflate og lett tråkk`);
+        } else if (t >= -1 && hbw >= 1.28 && ski.type !== "Skate") {
+          reasons.push(`Høyt spenn (HBW ${hbw} mm) gir god klisterklaring i stigning`);
+        } else if (ski.type === "Skate" && hbw >= 1.30) {
+          reasons.push(`Stivt skøytespenn (HBW ${hbw} mm) gir god stabilitet og bæring`);
+        }
+      }
+
+      // Slipestruktur
+      if (ski.grind) {
+        reasons.push(`Struktur: ${ski.grind} tilpasset ${t <= -4 ? 'fin/kald' : 'fuktig/omdannet'} snø`);
+      }
+    }
+
+    // 3. Anbefalt bindingsposisjon
+    let bindingRecommendation = "0 (Nøytral)";
+    if (ski.bindingShift) {
+      bindingRecommendation = ski.bindingShift;
+    } else if (weatherData) {
+      if (ski.type === "Felleski") {
+        bindingRecommendation = weatherData.temp >= 0 ? "-1 (Bedre glid, hindrer lugging)" : "+1 (Bedre feste på kald snø)";
+      } else if (ski.type === "Klassisk") {
+        bindingRecommendation = weatherData.temp <= -8 ? "-1 (Rå glid på kald trå snø)" : "0 (Standard)";
+      } else {
+        bindingRecommendation = "0 (Nøytral)";
+      }
+    }
+
+    const finalScore = Math.max(15, Math.min(100, Math.round(score)));
+
+    return {
+      matchScore: finalScore,
+      reasons,
+      warnings,
+      isWeightMatch,
+      isTempMatch,
+      bindingRecommendation,
+      conditionSummary: reasons[0] || (isWeightMatch ? "God match på vekt" : "Brukbart alternativ")
+    };
+  };
+
+  const calculateMatch = (ski) => {
+    return evaluateSki(ski).matchScore;
   };
 
   if (loading) {
@@ -1113,10 +1198,13 @@ export default function Home() {
   const memberSkis = skis.filter(s => !s.memberId || s.memberId === activeMemberId || s.memberId === "all");
   const activeSki = memberSkis.find(s => s.id === selectedSkiId) || memberSkis[0] || skis[0];
 
-  const memberSkisWithScore = memberSkis.map(s => ({
-    ...s,
-    matchScore: calculateMatch(s)
-  }));
+  const memberSkisWithScore = memberSkis.map(s => {
+    const evalData = evaluateSki(s);
+    return {
+      ...s,
+      ...evalData
+    };
+  });
 
   const searchedSkis = memberSkisWithScore.filter(s => {
     if (filter === "Klassisk" && (s.type !== "Klassisk" && s.type !== "Felleski")) return false;
@@ -1133,7 +1221,17 @@ export default function Home() {
     return 0;
   });
 
-  const bestSki = [...memberSkisWithScore].sort((a, b) => b.matchScore - a.matchScore)[0];
+  // Skivelger kandidater filtrert på valgt stilart
+  const candidateSkis = memberSkisWithScore.filter(s => {
+    if (recommenderStyle === "Klassisk") return s.type === "Klassisk" || s.type === "Felleski";
+    if (recommenderStyle === "Skate") return s.type === "Skate";
+    return true;
+  });
+
+  const rankedSkis = [...candidateSkis].sort((a, b) => b.matchScore - a.matchScore);
+  const bestSki = rankedSkis[0] || memberSkisWithScore[0];
+  const bestClassicSki = memberSkisWithScore.filter(s => s.type === "Klassisk" || s.type === "Felleski").sort((a, b) => b.matchScore - a.matchScore)[0];
+  const bestSkateSki = memberSkisWithScore.filter(s => s.type === "Skate").sort((a, b) => b.matchScore - a.matchScore)[0];
   const waxAdvice = getWaxAdvice(weatherData?.temp, weatherData?.humidity, bestSki?.type || "Klassisk");
 
   return (
@@ -1624,90 +1722,321 @@ export default function Home() {
           </div>
         )}
 
-        {/* SMØRETIPS VISNING */}
-        {view === "recommender" && weatherData && (
-          <div style={{ background: '#ffffff', border: '2px solid #0284c7', borderRadius: '18px', padding: '22px', marginTop: '16px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.08)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '19px', fontWeight: '800' }}>
-                  🧪 Smøring & Glidertips for {selectedSpot.name} ({weatherData.temp > 0 ? '+' : ''}{weatherData.temp}°C)
-                </h3>
-                <div style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>
-                  Føre: {weatherData.conditionText} • {weatherData.humidity}% fuktighet • {weatherData.windSpeed} m/s vind
-                </div>
-              </div>
-              <button
-                onClick={() => setShowSpotModal(true)}
-                style={{ background: '#f0f9ff', border: '1px solid #0284c7', color: '#0284c7', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
-              >
-                📍 Endre sted for smøretips
-              </button>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '14px', padding: '16px' }}>
-                <div style={{ fontSize: '12px', fontWeight: '800', color: '#166534', marginBottom: '6px' }}>🎿 FESTESMØRING / KLISTER</div>
-                <div style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>{waxAdvice.kick}</div>
-              </div>
-              <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '14px', padding: '16px' }}>
-                <div style={{ fontSize: '12px', fontWeight: '800', color: '#1e40af', marginBottom: '6px' }}>⚡ GLIDER & RILL</div>
-                <div style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>{waxAdvice.glide}</div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* FANER */}
-        <nav style={{ display: 'flex', gap: '10px', margin: '20px 0' }}>
-          <button onClick={() => setView("park")} style={{ background: view === 'park' ? '#0f172a' : '#fff', color: view === 'park' ? '#fff' : '#000', border: '1px solid #cbd5e1', padding: '12px 20px', borderRadius: '14px', fontWeight: '700', cursor: 'pointer' }}>
+        <nav style={{ display: 'flex', gap: '10px', margin: '20px 0', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setView("park")}
+            style={{ background: view === 'park' ? '#0f172a' : '#fff', color: view === 'park' ? '#fff' : '#000', border: '1px solid #cbd5e1', padding: '12px 20px', borderRadius: '14px', fontWeight: '700', cursor: 'pointer' }}
+          >
             🎿 {getPossessiveTitle(currentMember, user)} ({memberSkis.length})
           </button>
-          <button onClick={() => setView("manual")} style={{ background: view === 'manual' ? '#059669' : '#fff', color: view === 'manual' ? '#fff' : '#000', border: '1px solid #cbd5e1', padding: '12px 20px', borderRadius: '14px', fontWeight: '700', cursor: 'pointer' }}>
+          <button
+            onClick={() => setView("recommender")}
+            style={{ background: view === 'recommender' ? '#0284c7' : '#fff', color: view === 'recommender' ? '#fff' : '#0f172a', border: '1px solid ' + (view === 'recommender' ? '#0284c7' : '#cbd5e1'), padding: '12px 20px', borderRadius: '14px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            ⚡ Dagens Skivelger {bestSki && <span style={{ background: view === 'recommender' ? 'rgba(255,255,255,0.25)' : '#e0f2fe', color: view === 'recommender' ? '#fff' : '#0369a1', fontSize: '11px', padding: '2px 7px', borderRadius: '10px', fontWeight: '800' }}>{bestSki.matchScore}%</span>}
+          </button>
+          <button
+            onClick={() => setView("manual")}
+            style={{ background: view === 'manual' ? '#059669' : '#fff', color: view === 'manual' ? '#fff' : '#000', border: '1px solid #cbd5e1', padding: '12px 20px', borderRadius: '14px', fontWeight: '700', cursor: 'pointer' }}
+          >
             ➕ Registrer ski
           </button>
         </nav>
 
-        {/* 1. SKIPARK VISNING */}
-        {(view === "park" || view === "recommender") && (
+        {/* 1. DAGENS SKIVELGER VISNING */}
+        {view === "recommender" && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '24px' }}>
+            
+            {/* HOVEDANBEFALING / BESTE PAR I DAG */}
+            {bestSki ? (
+              <div style={{ background: 'linear-gradient(135deg, #091322 0%, #1e293b 100%)', color: '#ffffff', borderRadius: '24px', padding: '26px', boxShadow: '0 12px 30px -8px rgba(2, 132, 199, 0.25)', border: '1.5px solid #38bdf8' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '18px' }}>
+                  <div>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#38bdf8', color: '#091322', padding: '5px 12px', borderRadius: '16px', fontSize: '12px', fontWeight: '900', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      <span>🥇 Dagens 1. valg i skiparken</span>
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#93c5fd', fontWeight: '600', marginBottom: '4px' }}>
+                      Forhold på {selectedSpot.name}: {weatherData ? `${weatherData.temp > 0 ? '+' : ''}${weatherData.temp}°C, ${weatherData.conditionText}` : 'Laster vær...'} • Løper: {currentMember.name} ({currentMember.weightKg} kg)
+                    </div>
+                    <h2 style={{ margin: 0, fontSize: '28px', fontWeight: '900', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                      <span>{bestSki.brand} {bestSki.model}</span>
+                      <span style={{ fontSize: '16px', color: '#94a3b8', fontWeight: '700' }}>{bestSki.skiNumber || '#01'}</span>
+                    </h2>
+                    <div style={{ marginTop: '8px', fontSize: '14px', color: '#cbd5e1', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                      <span>Stilart: <strong style={{ color: '#ffffff' }}>{bestSki.type}</strong></span>
+                      <span>Lengde: <strong style={{ color: '#ffffff' }}>{bestSki.lengthCm} cm</strong></span>
+                      <span>Vektspenn: <strong style={{ color: '#ffffff' }}>{bestSki.weightKgMin}–{bestSki.weightKgMax} kg</strong></span>
+                      <span>Optimal temp: <strong style={{ color: '#ffffff' }}>{bestSki.tempOptimalMin}°C til {bestSki.tempOptimalMax}°C</strong></span>
+                    </div>
+                  </div>
+
+                  {/* MATCH SCORE */}
+                  <div style={{ textAlign: 'center', background: 'rgba(255, 255, 255, 0.08)', padding: '16px 22px', borderRadius: '20px', border: '1px solid rgba(255, 255, 255, 0.15)', minWidth: '130px' }}>
+                    <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94a3b8', fontWeight: '800' }}>Dagens match</div>
+                    <div style={{ fontSize: '42px', fontWeight: '900', color: bestSki.matchScore >= 85 ? '#4ade80' : (bestSki.matchScore >= 70 ? '#38bdf8' : '#facc15'), lineHeight: 1.1, margin: '4px 0' }}>
+                      {bestSki.matchScore}%
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#e2e8f0', fontWeight: '700' }}>
+                      {bestSki.matchScore >= 85 ? '🌟 Beste valg' : (bestSki.matchScore >= 70 ? '✓ Godt valg' : '⚠️ Vurder annet')}
+                    </div>
+                  </div>
+                </div>
+
+                {/* HVORFOR DETTE PARET VINNER I DAG */}
+                <div style={{ background: 'rgba(255, 255, 255, 0.05)', borderRadius: '18px', padding: '18px', marginBottom: '18px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                  <div style={{ fontSize: '13px', fontWeight: '800', color: '#38bdf8', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    💡 Hvorfor dette paret anbefales for deg i dag:
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px' }}>
+                    {bestSki.reasons?.map((reason, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#f8fafc' }}>
+                        <span style={{ color: '#4ade80', fontSize: '16px', fontWeight: 'bold' }}>✓</span>
+                        <span>{reason}</span>
+                      </div>
+                    ))}
+                    {bestSki.warnings?.map((warn, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#fef08a' }}>
+                        <span style={{ fontSize: '15px' }}>⚠️</span>
+                        <span>{warn}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* SPENN OG BINDINGSRÅD */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600' }}>HBW (Halvvekt):</div>
+                      <div style={{ fontSize: '16px', fontWeight: '800', color: '#ffffff' }}>{bestSki.hbw ? `${bestSki.hbw} mm` : 'Ikke registrert'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600' }}>FBW (Fullvekt):</div>
+                      <div style={{ fontSize: '16px', fontWeight: '800', color: '#ffffff' }}>{bestSki.fbw ? `${bestSki.fbw} mm` : 'Ikke registrert'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600' }}>Slipestruktur:</div>
+                      <div style={{ fontSize: '16px', fontWeight: '800', color: '#ffffff' }}>{bestSki.grind || 'Standard'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600' }}>Anbefalt binding (Move/Shift):</div>
+                      <div style={{ fontSize: '16px', fontWeight: '800', color: '#38bdf8' }}>{bestSki.bindingRecommendation}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* HANDLINGSKNAPPER */}
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => { setSelectedSkiId(bestSki.id); setView("detail"); }}
+                    style={{ background: '#0284c7', color: '#ffffff', border: 'none', padding: '12px 22px', borderRadius: '12px', fontWeight: '800', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                  >
+                    🔍 Se spennkurve & logg for {bestSki.brand} →
+                  </button>
+                  <button
+                    onClick={() => setView("park")}
+                    style={{ background: 'rgba(255, 255, 255, 0.12)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '12px 18px', borderRadius: '12px', fontWeight: '700', fontSize: '14px', cursor: 'pointer' }}
+                  >
+                    🎿 Vis hele skiparken ({memberSkis.length} par)
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ background: '#ffffff', borderRadius: '20px', padding: '30px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '40px', marginBottom: '10px' }}>🎿</div>
+                <h3 style={{ margin: '0 0 8px 0' }}>Ingen ski funnet for {currentMember.name}</h3>
+                <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '16px' }}>Legg til ski i parken for å få automatiske føreanbefalinger.</p>
+                <button onClick={() => setView("manual")} style={{ background: '#059669', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  + Registrer ski nå
+                </button>
+              </div>
+            )}
+
+            {/* STILART-FILTER & RANGERING AV HELE STALLEN */}
+            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '22px', padding: '22px', boxShadow: '0 4px 12px -2px rgba(15, 23, 42, 0.05)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '18px' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '19px', fontWeight: '800' }}>
+                    📊 Rangering av skiparken for {selectedSpot.name}
+                  </h3>
+                  <p style={{ margin: '3px 0 0 0', fontSize: '13px', color: '#64748b' }}>
+                    Alle dine skipar rangert etter match på temperatur ({weatherData ? `${weatherData.temp}°C` : '-'}) og løpervekt ({currentMember.weightKg} kg).
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', gap: '6px', background: '#f1f5f9', padding: '4px', borderRadius: '12px' }}>
+                  {[
+                    { id: "Alle", label: `Alle (${memberSkisWithScore.length})` },
+                    { id: "Klassisk", label: "🎿 Klassisk / Felleski" },
+                    { id: "Skate", label: "⚡ Skøyting" }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setRecommenderStyle(tab.id)}
+                      style={{ background: recommenderStyle === tab.id ? '#ffffff' : 'transparent', color: recommenderStyle === tab.id ? '#0284c7' : '#475569', border: 'none', padding: '7px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', boxShadow: recommenderStyle === tab.id ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* RANGERTE SKI-LISTE */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {rankedSkis.map((ski, index) => {
+                  const isTop = index === 0;
+                  return (
+                    <div
+                      key={ski.id}
+                      style={{ background: isTop ? '#f0fdf4' : '#ffffff', border: isTop ? '2px solid #22c55e' : '1px solid #e2e8f0', borderRadius: '16px', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: isTop ? '#16a34a' : (index === 1 ? '#64748b' : (index === 2 ? '#b45309' : '#e2e8f0')), color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '16px' }}>
+                          {index === 0 ? '🥇' : (index === 1 ? '🥈' : (index === 2 ? '🥉' : `${index + 1}`))}
+                        </div>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: '800', fontSize: '17px', color: '#0f172a' }}>{ski.brand} {ski.model}</span>
+                            <span style={{ fontSize: '12px', background: '#e2e8f0', color: '#334155', padding: '2px 8px', borderRadius: '6px', fontWeight: '700' }}>{ski.type}</span>
+                            <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>{ski.skiNumber}</span>
+                            {isTop && <span style={{ fontSize: '11px', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '6px', fontWeight: '800' }}>BEST I DAG</span>}
+                          </div>
+                          <div style={{ fontSize: '13px', color: '#475569', marginTop: '3px' }}>
+                            {ski.lengthCm} cm • Optimalt: {ski.weightKgMin}–{ski.weightKgMax} kg • {ski.tempOptimalMin}°C til {ski.tempOptimalMax}°C
+                          </div>
+                          <div style={{ fontSize: '12px', color: isTop ? '#15803d' : '#64748b', marginTop: '2px', fontWeight: '600' }}>
+                            {ski.conditionSummary}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: '24px', fontWeight: '900', color: ski.matchScore >= 85 ? '#16a34a' : (ski.matchScore >= 70 ? '#0284c7' : '#ea580c') }}>
+                            {ski.matchScore}%
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>
+                            {ski.isWeightMatch ? '✓ Vekt OK' : '⚠️ Vektavvik'}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => { setSelectedSkiId(ski.id); setView("detail"); }}
+                          style={{ background: '#f8fafc', border: '1px solid #cbd5e1', color: '#0284c7', padding: '9px 15px', borderRadius: '10px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}
+                        >
+                          Se detaljer →
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* SMØRING & GLIDERTIPS FOR DET ANBEFALTE PARET */}
+            {weatherData && (
+              <div style={{ background: '#ffffff', border: '2px solid #0284c7', borderRadius: '22px', padding: '22px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.08)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '19px', fontWeight: '800' }}>
+                      🧪 Smøring & Glidertips for {bestSki?.brand} {bestSki?.model} ({selectedSpot.name}, {weatherData.temp > 0 ? '+' : ''}{weatherData.temp}°C)
+                    </h3>
+                    <div style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>
+                      Forhold: {weatherData.conditionText} • {weatherData.humidity}% fuktighet • {weatherData.windSpeed} m/s vind
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowSpotModal(true)}
+                    style={{ background: '#f0f9ff', border: '1px solid #0284c7', color: '#0284c7', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                  >
+                    📍 Endre sted
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                  <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '16px', padding: '16px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: '800', color: '#166534', marginBottom: '6px' }}>🎿 FESTESMØRING / KLISTER</div>
+                    <div style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>{waxAdvice.kick}</div>
+                  </div>
+                  <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '16px', padding: '16px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: '800', color: '#1e40af', marginBottom: '6px' }}>⚡ GLIDER & RILL</div>
+                    <div style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>{waxAdvice.glide}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </div>
+        )}
+
+        {/* 2. SKIPARK VISNING (ALLE SKI) */}
+        {view === "park" && (
           <div>
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
-              <input
-                type="text"
-                placeholder="🔍 Søk modell, tag..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ flex: 1, minWidth: '200px', background: '#fff', border: '1px solid #cbd5e1', padding: '10px 14px', borderRadius: '10px' }}
-              />
-              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '10px 14px', borderRadius: '10px', fontWeight: 'bold' }}>
-                <option value="number">Sorter: Par-nummer</option>
-                <option value="match">Sorter: Dagens match (%)</option>
-                <option value="km">Sorter: Flest km</option>
-              </select>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', gap: '10px', flex: 1, minWidth: '260px' }}>
+                <input
+                  type="text"
+                  placeholder="🔍 Søk modell, tag..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{ flex: 1, background: '#fff', border: '1px solid #cbd5e1', padding: '10px 14px', borderRadius: '10px' }}
+                />
+                <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '10px 14px', borderRadius: '10px', fontWeight: 'bold' }}>
+                  <option value="number">Sorter: Par-nummer</option>
+                  <option value="match">Sorter: Dagens match (%)</option>
+                  <option value="km">Sorter: Flest km</option>
+                </select>
+              </div>
+
+              <div style={{ fontSize: '13px', color: '#64748b' }}>
+                Føre basert på: <strong style={{ color: '#0284c7' }}>{selectedSpot.name} ({weatherData ? `${weatherData.temp}°C` : '-'})</strong>
+              </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '18px' }}>
               {sortedSkis.map((ski) => (
-                <div key={ski.id} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '18px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontWeight: '800', fontSize: '17px' }}>{ski.brand} {ski.model}</span>
-                    <button
-                      onClick={() => { setPassportModalSki(ski); setTransferTargetMemberId(ski.memberId || ""); }}
-                      style={{ background: '#f5f3ff', border: '1px solid #ddd6fe', color: '#6d28d9', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
-                    >
-                      📤 Skikort / Overfør
-                    </button>
+                <div key={ski.id} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '18px', boxShadow: '0 2px 6px rgba(0,0,0,0.03)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: '800', fontSize: '17px' }}>{ski.brand} {ski.model}</span>
+                        <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>{ski.skiNumber}</span>
+                      </div>
+                      <p style={{ margin: '3px 0 0 0', fontSize: '13px', color: '#64748b' }}>
+                        {ski.type} • {ski.lengthCm} cm • Vekt: {ski.weightKgMin}-{ski.weightKgMax} kg
+                      </p>
+                    </div>
+
+                    {/* MATCH BADGE */}
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ background: ski.matchScore >= 85 ? '#dcfce7' : (ski.matchScore >= 70 ? '#e0f2fe' : '#fef3c7'), color: ski.matchScore >= 85 ? '#15803d' : (ski.matchScore >= 70 ? '#0369a1' : '#b45309'), padding: '4px 8px', borderRadius: '8px', fontWeight: '800', fontSize: '12px', display: 'inline-block' }}>
+                        🎯 {ski.matchScore}%
+                      </span>
+                    </div>
                   </div>
-                  <p style={{ margin: '0 0 10px 0', fontSize: '13px', color: '#64748b' }}>{ski.lengthCm} cm • Vekt: {ski.weightKgMin}-{ski.weightKgMax} kg</p>
-                  <div style={{ background: '#f8fafc', padding: '10px', borderRadius: '10px', fontSize: '13px', display: 'flex', justifyContent: 'space-between' }}>
+
+                  <div style={{ background: '#f8fafc', padding: '10px', borderRadius: '10px', fontSize: '13px', display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
                     <span>HBW: <strong>{ski.hbw ? `${ski.hbw} mm` : '-'}</strong></span>
                     <span>FBW: <strong>{ski.fbw ? `${ski.fbw} mm` : '-'}</strong></span>
+                    <span>Optimal: <strong>{ski.tempOptimalMin}°C til {ski.tempOptimalMax}°C</strong></span>
                   </div>
-                  <button
-                    onClick={() => { setSelectedSkiId(ski.id); setView("detail"); }}
-                    style={{ marginTop: '12px', width: '100%', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '10px', color: '#0284c7', fontWeight: '700', cursor: 'pointer' }}
-                  >
-                    Vis kurve & logg →
-                  </button>
+
+                  <div style={{ fontSize: '12px', color: ski.matchScore >= 85 ? '#15803d' : '#64748b', marginTop: '8px', background: '#f1f5f9', padding: '6px 10px', borderRadius: '8px' }}>
+                    {ski.conditionSummary || 'Standard føre'}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                    <button
+                      onClick={() => { setSelectedSkiId(ski.id); setView("detail"); }}
+                      style={{ flex: 1, background: '#0284c7', border: 'none', padding: '9px', borderRadius: '10px', color: '#ffffff', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}
+                    >
+                      Vis kurve & logg →
+                    </button>
+                    <button
+                      onClick={() => { setPassportModalSki(ski); setTransferTargetMemberId(ski.memberId || ""); }}
+                      style={{ background: '#f5f3ff', border: '1px solid #ddd6fe', color: '#6d28d9', padding: '9px 12px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
+                    >
+                      📤 Skikort
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
