@@ -1,0 +1,8 @@
+{
+  "name": "SkiPark Pro",
+  "description": "Digital skipark, Skiselector OCR, spennkurver og måledata",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

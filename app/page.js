@@ -346,7 +346,11 @@ export default function Home() {
   // Yr Steder
   const [spots, setSpots] = useState(DEFAULT_SPOTS);
   const [selectedSpot, setSelectedSpot] = useState(DEFAULT_SPOTS[0]);
-  const [showAddSpot, setShowAddSpot] = useState(false);
+  const [showSpotModal, setShowSpotModal] = useState(false);
+  const [spotSearchQuery, setSpotSearchQuery] = useState("");
+  const [spotSearchResults, setSpotSearchResults] = useState([]);
+  const [isSearchingPlaces, setIsSearchingPlaces] = useState(false);
+  const [isLocatingGps, setIsLocatingGps] = useState(false);
   const [weatherData, setWeatherData] = useState(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
 
@@ -399,6 +403,9 @@ export default function Home() {
     const savedSpots = localStorage.getItem("skipark_custom_spots");
     if (savedSpots) try { setSpots(JSON.parse(savedSpots)); } catch (e) {}
 
+    const savedSelectedSpot = localStorage.getItem("skipark_selected_spot");
+    if (savedSelectedSpot) try { setSelectedSpot(JSON.parse(savedSelectedSpot)); } catch (e) {}
+
     const savedSkis = localStorage.getItem("skipark_skis_data");
     if (savedSkis) try { setSkis(JSON.parse(savedSkis)); } catch (e) {}
 
@@ -430,17 +437,27 @@ export default function Home() {
   const fetchYrWeather = async (lat, lon) => {
     setWeatherLoading(true);
     try {
-      const res = await fetch(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${lat}&lon=${lon}`);
+      const res = await fetch(`/api/weather?lat=${lat}&lon=${lon}`);
       if (!res.ok) throw new Error();
       const data = await res.json();
-      const current = data.properties.timeseries[0].data.instant.details;
       setWeatherData({
-        temp: current.air_temperature,
-        humidity: current.relative_humidity,
-        windSpeed: current.wind_speed
+        temp: data.temp,
+        humidity: data.humidity,
+        windSpeed: data.windSpeed,
+        precipitation: data.precipitation,
+        conditionText: data.conditionText,
+        conditionIcon: data.conditionIcon,
+        isFallback: data.isFallback
       });
     } catch (err) {
-      setWeatherData({ temp: -3.5, humidity: 82, windSpeed: 2.4 });
+      setWeatherData({
+        temp: -3.5,
+        humidity: 82,
+        windSpeed: 2.4,
+        precipitation: 0.0,
+        conditionText: "Vintervær",
+        conditionIcon: "❄️"
+      });
     } finally {
       setWeatherLoading(false);
     }
@@ -463,6 +480,111 @@ export default function Home() {
   const persistSpots = (updatedSpots) => {
     setSpots(updatedSpots);
     localStorage.setItem("skipark_custom_spots", JSON.stringify(updatedSpots));
+  };
+
+  const handleSelectSpot = (spot, alsoSaveToFavorites = false) => {
+    setSelectedSpot(spot);
+    localStorage.setItem("skipark_selected_spot", JSON.stringify(spot));
+
+    if (alsoSaveToFavorites) {
+      const exists = spots.some(s => 
+        s.name.toLowerCase() === spot.name.toLowerCase() || 
+        (Math.abs(s.lat - spot.lat) < 0.01 && Math.abs(s.lon - spot.lon) < 0.01)
+      );
+      if (!exists) {
+        const updated = [spot, ...spots];
+        persistSpots(updated);
+      }
+    }
+    setShowSpotModal(false);
+    setSpotSearchQuery("");
+    setSpotSearchResults([]);
+  };
+
+  const handleSearchPlaces = async (query) => {
+    setSpotSearchQuery(query);
+    if (!query || query.trim().length < 2) {
+      setSpotSearchResults([]);
+      return;
+    }
+    setIsSearchingPlaces(true);
+    try {
+      const res = await fetch(`/api/places?q=${encodeURIComponent(query.trim())}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSpotSearchResults(data.results || []);
+      }
+    } catch (e) {
+      // Ignorer søkefeil
+    } finally {
+      setIsSearchingPlaces(false);
+    }
+  };
+
+  const handleUseCurrentLocation = () => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      alert("Nettleseren din støtter ikke posisjonsinnhenting.");
+      return;
+    }
+    setIsLocatingGps(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          const res = await fetch(`/api/places?lat=${lat}&lon=${lon}`);
+          let placeName = "Min posisjon (GPS)";
+          let detail = "Posisjon";
+          if (res.ok) {
+            const data = await res.json();
+            if (data.place?.name) {
+              placeName = `${data.place.name} (Min posisjon)`;
+              detail = data.place.detail;
+            }
+          }
+          const userSpot = {
+            id: "gps-" + Date.now(),
+            name: placeName,
+            detail: detail,
+            lat: Math.round(lat * 1000) / 1000,
+            lon: Math.round(lon * 1000) / 1000,
+            isGps: true
+          };
+          handleSelectSpot(userSpot, false);
+        } catch (e) {
+          const fallbackSpot = {
+            id: "gps-" + Date.now(),
+            name: "Min posisjon (GPS)",
+            detail: "GPS-posisjon",
+            lat: Math.round(pos.coords.latitude * 1000) / 1000,
+            lon: Math.round(pos.coords.longitude * 1000) / 1000,
+            isGps: true
+          };
+          handleSelectSpot(fallbackSpot, false);
+        } finally {
+          setIsLocatingGps(false);
+        }
+      },
+      (err) => {
+        setIsLocatingGps(false);
+        alert("Kunne ikke hente posisjonen din (" + (err.message || "tillatelse avvist") + "). Tillat posisjonstilgang i nettleseren.");
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  };
+
+  const handleDeleteSpot = (spotToDelete, e) => {
+    if (e) e.stopPropagation();
+    if (spots.length <= 1) {
+      alert("Du må ha minst ett lagret sted i listen.");
+      return;
+    }
+    const updated = spots.filter(s => s.name !== spotToDelete.name);
+    persistSpots(updated);
+    if (selectedSpot.name === spotToDelete.name) {
+      setSelectedSpot(updated[0]);
+      localStorage.setItem("skipark_selected_spot", JSON.stringify(updated[0]));
+    }
   };
 
   const handleAddMember = (name, weight) => {
@@ -488,11 +610,14 @@ export default function Home() {
     const updated = [newSpot, ...spots];
     persistSpots(updated);
     setSelectedSpot(newSpot);
-    setShowAddSpot(false);
+    setShowSpotModal(false);
   };
 
   const handleGoogleLogin = async () => {
-    if (!supabase) return;
+    if (!supabase) {
+      setUser({ id: "demo-user", email: "skiloper@skipark.pro", user_metadata: { full_name: "Demo Skiløper" } });
+      return;
+    }
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin }
@@ -501,7 +626,10 @@ export default function Home() {
 
   const handleEmailAuth = async (e) => {
     e.preventDefault();
-    if (!supabase) return;
+    if (!supabase) {
+      setUser({ id: "user-" + Date.now(), email: email || "deg@skipark.pro", user_metadata: { full_name: (email || "").split('@')[0] || "Skiløper" } });
+      return;
+    }
     setAuthLoading(true);
     setAuthMessage({ text: "", type: "" });
     try {
@@ -525,8 +653,10 @@ export default function Home() {
   };
 
   const handleLogout = async () => {
-    if (!supabase) return;
-    await supabase.auth.signOut();
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
+    setUser(null);
   };
 
   const handleAddSki = (skiToSave) => {
@@ -908,7 +1038,7 @@ export default function Home() {
 
           <button
             onClick={handleGoogleLogin}
-            style={{ width: '100%', minHeight: '50px', background: '#0f172a', color: '#ffffff', fontWeight: '700', border: 'none', padding: '12px 20px', borderRadius: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', fontSize: '15px', marginBottom: '20px' }}
+            style={{ width: '100%', minHeight: '50px', background: '#0f172a', color: '#ffffff', fontWeight: '700', border: 'none', padding: '12px 20px', borderRadius: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', fontSize: '15px', marginBottom: '10px' }}
           >
             <svg style={{ width: '19px', height: '19px' }} viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -917,6 +1047,14 @@ export default function Home() {
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
             </svg>
             Fortsett med Google
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setUser({ id: "demo-user", email: "deg@skipark.pro", user_metadata: { full_name: "Skiløper" } })}
+            style={{ width: '100%', minHeight: '44px', background: '#f8fafc', color: '#0369a1', fontWeight: '700', border: '1.5px dashed #7dd3fc', padding: '10px 16px', borderRadius: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '14px', marginBottom: '18px' }}
+          >
+            🎿 Prøv SkiPark Pro (Demomodus)
           </button>
 
           <form onSubmit={handleEmailAuth} style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
@@ -1234,33 +1372,278 @@ export default function Home() {
           </div>
         )}
 
-        {/* LIVE YR VÆR-BANNER */}
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '18px 24px', marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ background: '#f0f9ff', padding: '12px', borderRadius: '14px', fontSize: '28px' }}>🌤️</div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>Live Yr-føre ({selectedSpot.name}):</span>
-                <button onClick={() => setShowAddSpot(true)} style={{ background: '#f8fafc', border: '1px dashed #0284c7', color: '#0284c7', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>+ Nytt sted</button>
+        {/* LIVE YR VÆR-BANNER MED STEDSVELGER OG SØK */}
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '18px 22px', marginTop: '16px', boxShadow: '0 4px 12px -2px rgba(15, 23, 42, 0.05)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+            
+            {/* VÆRDATA FRA YR */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', width: '56px', height: '56px', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '30px' }}>
+                {weatherLoading ? '⏳' : (weatherData?.conditionIcon || '🌤️')}
               </div>
-              <div style={{ fontSize: '22px', fontWeight: '800', color: weatherData?.temp <= 0 ? '#0284c7' : '#ea580c' }}>
-                {weatherData ? `${weatherData.temp}°C` : 'Henter...'}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#0284c7', fontWeight: '800' }}>
+                    Yr.no Værvarsel
+                  </span>
+                  {weatherData?.conditionText && (
+                    <span style={{ fontSize: '12px', color: '#475569', fontWeight: '600' }}>
+                      • {weatherData.conditionText}
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+                  <span style={{ fontSize: '26px', fontWeight: '900', color: weatherData?.temp <= 0 ? '#0284c7' : '#ea580c', letterSpacing: '-0.02em' }}>
+                    {weatherLoading ? 'Henter...' : (weatherData ? `${weatherData.temp > 0 ? '+' : ''}${weatherData.temp}°C` : '–°C')}
+                  </span>
+                  {weatherData && (
+                    <div style={{ display: 'flex', gap: '10px', fontSize: '12px', color: '#64748b', fontWeight: '600' }}>
+                      <span>💧 {weatherData.humidity}%</span>
+                      <span>💨 {weatherData.windSpeed} m/s</span>
+                      {weatherData.precipitation > 0 && (
+                        <span style={{ color: '#0284c7', fontWeight: '700' }}>🌨️ {weatherData.precipitation} mm</span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
 
-          <button
-            onClick={() => setView("recommender")}
-            style={{ background: '#eff6ff', border: '1.5px solid #0284c7', color: '#0284c7', padding: '10px 18px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer' }}
-          >
-            ⚡ Dagens Skivelger & Smøring
-          </button>
+            {/* AKTIVT STED OG HANDLINGER */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>Valgt sted:</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <select
+                    value={selectedSpot.name}
+                    onChange={(e) => {
+                      const found = spots.find(s => s.name === e.target.value);
+                      if (found) handleSelectSpot(found);
+                    }}
+                    style={{ background: '#f8fafc', border: '1.5px solid #cbd5e1', color: '#0f172a', padding: '8px 12px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', maxWidth: '210px' }}
+                  >
+                    {spots.map((s, idx) => (
+                      <option key={`${s.name}-${idx}`} value={s.name}>
+                        📍 {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                <button
+                  onClick={() => setShowSpotModal(true)}
+                  style={{ background: '#0284c7', color: '#ffffff', border: 'none', padding: '9px 14px', borderRadius: '10px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  title="Søk opp skiløyper, steder og kommuner"
+                >
+                  🔍 Søk sted
+                </button>
+
+                <button
+                  onClick={handleUseCurrentLocation}
+                  disabled={isLocatingGps}
+                  style={{ background: '#f8fafc', border: '1.5px solid #cbd5e1', color: '#334155', padding: '9px 12px', borderRadius: '10px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  title="Hent posisjon der du er nå"
+                >
+                  {isLocatingGps ? '⏳ Henter...' : '🧭 Min posisjon'}
+                </button>
+
+                <button
+                  onClick={() => setView("recommender")}
+                  style={{ background: view === 'recommender' ? '#0f172a' : '#eff6ff', border: '1.5px solid #0284c7', color: view === 'recommender' ? '#ffffff' : '#0284c7', padding: '9px 16px', borderRadius: '10px', fontWeight: '800', fontSize: '13px', cursor: 'pointer' }}
+                >
+                  ⚡ Skivelger & Smøring
+                </button>
+              </div>
+
+            </div>
+
+          </div>
         </div>
+
+        {/* MODAL / SKUFF FOR Å SØKE OPP ELLER ENDRE YR-STED */}
+        {showSpotModal && (
+          <div style={{ background: '#ffffff', border: '2px solid #0284c7', borderRadius: '20px', padding: '24px', marginTop: '16px', boxShadow: '0 10px 25px -5px rgba(2, 132, 199, 0.15)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '14px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: '19px', fontWeight: '800', color: '#0f172a' }}>
+                  📍 Velg eller søk opp sted for Yr-føre
+                </h3>
+                <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
+                  Søk opp der du er akkurat nå eller dit du skal på ski for å hente oppdaterte temperaturer, snøvarsel og smøretips.
+                </p>
+              </div>
+              <button
+                onClick={() => { setShowSpotModal(false); setSpotSearchQuery(""); setSpotSearchResults([]); }}
+                style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* SØKEFELT */}
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: '260px', position: 'relative' }}>
+                <input
+                  type="text"
+                  placeholder="Skriv stedsnavn (f.eks. Sjusjøen, Beitostølen, Mylla, Norefjell, Geilo, Voss, Oslo)..."
+                  value={spotSearchQuery}
+                  onChange={(e) => handleSearchPlaces(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSearchPlaces(spotSearchQuery);
+                  }}
+                  autoFocus
+                  style={{ width: '100%', background: '#f8fafc', border: '2px solid #0284c7', padding: '12px 14px', borderRadius: '12px', fontSize: '14px', boxSizing: 'border-box' }}
+                />
+              </div>
+              <button
+                onClick={() => handleSearchPlaces(spotSearchQuery)}
+                disabled={isSearchingPlaces}
+                style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: '12px', fontWeight: '700', fontSize: '14px', cursor: 'pointer' }}
+              >
+                {isSearchingPlaces ? 'Søker...' : 'Søk'}
+              </button>
+              <button
+                onClick={handleUseCurrentLocation}
+                disabled={isLocatingGps}
+                style={{ background: '#f0fdf4', border: '1.5px solid #059669', color: '#059669', padding: '12px 16px', borderRadius: '12px', fontWeight: '700', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                {isLocatingGps ? '⏳ Finner deg...' : '🧭 Bruk min GPS-posisjon'}
+              </button>
+            </div>
+
+            {/* SØKERESULTATER */}
+            {spotSearchResults.length > 0 && (
+              <div style={{ marginBottom: '22px', background: '#f0f9ff', border: '1.5px solid #bae6fd', borderRadius: '14px', padding: '14px' }}>
+                <div style={{ fontSize: '12px', fontWeight: '800', color: '#0369a1', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  🎯 Treff på &quot;{spotSearchQuery}&quot; ({spotSearchResults.length}):
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {spotSearchResults.map((res, i) => (
+                    <div
+                      key={res.id || i}
+                      style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: '800', fontSize: '14px', color: '#0f172a' }}>
+                          📍 {res.name}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#64748b' }}>
+                          {res.detail} • ({res.lat.toFixed(2)}, {res.lon.toFixed(2)})
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => handleSelectSpot(res, false)}
+                          style={{ background: '#0284c7', color: '#ffffff', border: 'none', padding: '7px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+                        >
+                          ✓ Velg nå
+                        </button>
+                        <button
+                          onClick={() => handleSelectSpot(res, true)}
+                          style={{ background: '#f8fafc', color: '#0284c7', border: '1px solid #0284c7', padding: '7px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+                        >
+                          ⭐ Velg & lagre
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* HURTIGVALG: POPULÆRE SKIDESTINASJONER */}
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ fontSize: '12px', fontWeight: '800', color: '#475569', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                ⛷️ Hurtigvalg kjente skidestinasjoner:
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {[
+                  { name: "Sjusjøen", lat: 61.15, lon: 10.70 },
+                  { name: "Holmenkollen", lat: 59.96, lon: 10.67 },
+                  { name: "Beitostølen", lat: 61.25, lon: 8.90 },
+                  { name: "Mylla (Nordmarka)", lat: 60.25, lon: 10.61 },
+                  { name: "Geilo", lat: 60.53, lon: 8.20 },
+                  { name: "Trysil", lat: 61.31, lon: 12.26 },
+                  { name: "Skeikampen", lat: 61.34, lon: 10.09 },
+                  { name: "Hafjell", lat: 61.23, lon: 10.45 },
+                  { name: "Granåsen (Trondheim)", lat: 63.38, lon: 10.31 },
+                  { name: "Norefjell", lat: 60.19, lon: 9.59 },
+                  { name: "Gålå", lat: 61.50, lon: 9.80 },
+                  { name: "Hemsedal", lat: 60.86, lon: 8.56 }
+                ].map(pop => (
+                  <button
+                    key={pop.name}
+                    onClick={() => handleSelectSpot(pop, true)}
+                    style={{ background: selectedSpot.name === pop.name ? '#0284c7' : '#f1f5f9', color: selectedSpot.name === pop.name ? '#ffffff' : '#334155', border: '1px solid ' + (selectedSpot.name === pop.name ? '#0284c7' : '#cbd5e1'), borderRadius: '8px', padding: '6px 12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+                  >
+                    {selectedSpot.name === pop.name ? '✓ ' : ''}{pop.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* MINE LAGREDE FAVORITTSTEDER */}
+            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+              <div style={{ fontSize: '12px', fontWeight: '800', color: '#475569', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                ⭐ Mine lagrede steder ({spots.length}):
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '8px' }}>
+                {spots.map((sp, idx) => {
+                  const isCur = selectedSpot.name === sp.name;
+                  return (
+                    <div
+                      key={`${sp.name}-${idx}`}
+                      onClick={() => handleSelectSpot(sp)}
+                      style={{ background: isCur ? '#f0f9ff' : '#f8fafc', border: isCur ? '2px solid #0284c7' : '1px solid #cbd5e1', borderRadius: '10px', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                    >
+                      <div style={{ overflow: 'hidden' }}>
+                        <div style={{ fontWeight: isCur ? '800' : '600', fontSize: '13px', color: isCur ? '#0284c7' : '#0f172a', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                          {isCur ? '✓ ' : ''}{sp.name}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>
+                          {sp.lat.toFixed(2)}, {sp.lon.toFixed(2)}
+                        </div>
+                      </div>
+                      {spots.length > 1 && (
+                        <button
+                          onClick={(e) => handleDeleteSpot(sp, e)}
+                          title="Fjern fra favoritter"
+                          style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '14px', cursor: 'pointer', padding: '4px' }}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+          </div>
+        )}
 
         {/* SMØRETIPS VISNING */}
         {view === "recommender" && weatherData && (
-          <div style={{ background: '#ffffff', border: '2px solid #0284c7', borderRadius: '18px', padding: '22px', marginTop: '16px' }}>
-            <h3 style={{ margin: '0 0 14px 0', fontSize: '18px', fontWeight: '800' }}>🧪 Smøring & Glidertips for {selectedSpot.name} ({weatherData.temp}°C)</h3>
+          <div style={{ background: '#ffffff', border: '2px solid #0284c7', borderRadius: '18px', padding: '22px', marginTop: '16px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.08)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '19px', fontWeight: '800' }}>
+                  🧪 Smøring & Glidertips for {selectedSpot.name} ({weatherData.temp > 0 ? '+' : ''}{weatherData.temp}°C)
+                </h3>
+                <div style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>
+                  Føre: {weatherData.conditionText} • {weatherData.humidity}% fuktighet • {weatherData.windSpeed} m/s vind
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSpotModal(true)}
+                style={{ background: '#f0f9ff', border: '1px solid #0284c7', color: '#0284c7', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                📍 Endre sted for smøretips
+              </button>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
               <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '14px', padding: '16px' }}>
                 <div style={{ fontSize: '12px', fontWeight: '800', color: '#166534', marginBottom: '6px' }}>🎿 FESTESMØRING / KLISTER</div>
