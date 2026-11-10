@@ -23,18 +23,761 @@ const DEFAULT_SPOTS = [
 ];
 
 const RACING_PRESETS = [
-  { brand: "Kästle", model: "RX 10 2.0 Classic Cold", type: "Klassisk", grind: "CW1", lengthCm: 206, camber: "Cold", hbw: 1.22, fbw: 0.20, minW: 78, maxW: 88, tempMin: -16, tempMax: -2 },
-  { brand: "Kästle", model: "RX 10 2.0 Classic Plus", type: "Klassisk", grind: "CW2", lengthCm: 206, camber: "Plus / Våt", hbw: 1.35, fbw: 0.28, minW: 80, maxW: 90, tempMin: -3, tempMax: 4 },
-  { brand: "Kästle", model: "RX 10 2.0 Skate", type: "Skate", grind: "UW-1", lengthCm: 192, camber: "Universal", hbw: 1.40, fbw: 0.35, minW: 75, maxW: 88, tempMin: -10, tempMax: 2 },
-  { brand: "Fischer", model: "Speedmax 3D Skate Plus", type: "Skate", grind: "P5-1", lengthCm: 191, camber: "Plus 1Q", hbw: 1.35, fbw: 0.30, minW: 74, maxW: 86, tempMin: -8, tempMax: 2 },
-  { brand: "Fischer", model: "Speedmax 3D Classic Cold", type: "Klassisk", grind: "C12-1", lengthCm: 207, camber: "902 Kald", hbw: 1.15, fbw: 0.18, minW: 76, maxW: 88, tempMin: -16, tempMax: -2 },
-  { brand: "Fischer", model: "Twin Skin Speedmax 3D", type: "Felleski", grind: "P5-1", lengthCm: 207, camber: "Medium", hbw: 1.18, fbw: 0.24, minW: 76, maxW: 88, tempMin: -10, tempMax: 3 },
-  { brand: "Madshus", model: "Redline 3.0 Classic Cold", type: "Klassisk", grind: "M61", lengthCm: 207, camber: "Cold", hbw: 1.16, fbw: 0.19, minW: 75, maxW: 87, tempMin: -15, tempMax: -2 },
-  { brand: "Madshus", model: "Redline 3.0 Skate F2", type: "Skate", grind: "M62", lengthCm: 192, camber: "Hard track", hbw: 1.42, fbw: 0.32, minW: 74, maxW: 86, tempMin: -8, tempMax: 2 },
-  { brand: "Rossignol", model: "X-IUM Premium+ Classic C2", type: "Klassisk", grind: "K7", lengthCm: 207, camber: "C2 Universal", hbw: 1.20, fbw: 0.21, minW: 76, maxW: 88, tempMin: -10, tempMax: 0 },
-  { brand: "Rossignol", model: "X-IUM Premium+ S2 Skate", type: "Skate", grind: "K7", lengthCm: 193, camber: "S2 Universal", hbw: 1.38, fbw: 0.30, minW: 74, maxW: 86, tempMin: -8, tempMax: 2 },
-  { brand: "Atomic", model: "Redster C9 Carbon Skintec", type: "Felleski", grind: "AM7", lengthCm: 205, camber: "Universal", hbw: 1.12, fbw: 0.22, minW: 76, maxW: 88, tempMin: -8, tempMax: 3 },
-  { brand: "Salomon", model: "S/Lab Carbon eSkin", type: "Felleski", grind: "G5 Universal", lengthCm: 206, camber: "Medium", hbw: 1.15, fbw: 0.22, minW: 75, maxW: 88, tempMin: -8, tempMax: 2 }
+  // FISCHER
+  {
+    brand: "Fischer",
+    model: "Speedmax 3D Skate Plus",
+    type: "Skate",
+    grind: "P5-1",
+    lengthCm: 191,
+    camber: "1Q / Plus",
+    hbw: 1.35,
+    fbw: 0.30,
+    minW: 75,
+    maxW: 88,
+    tempMin: -8,
+    tempMax: 4,
+    tag: "#speedmax",
+    notes: "Flaggskipet for allround og varmere skøyteføre. Gliding Sidewall og Cold Base Bonding."
+  },
+  {
+    brand: "Fischer",
+    model: "Speedmax 3D Skate Cold",
+    type: "Skate",
+    grind: "C12-1",
+    lengthCm: 191,
+    camber: "610 / 115 Cold",
+    hbw: 1.25,
+    fbw: 0.22,
+    minW: 74,
+    maxW: 86,
+    tempMin: -20,
+    tempMax: -2,
+    tag: "#speedmax",
+    notes: "Ren kaldskøyteski for finkornet kald snø. Lavere spennhøyde og roligere tupp."
+  },
+  {
+    brand: "Fischer",
+    model: "Speedmax 3D Helium Skate Plus",
+    type: "Skate",
+    grind: "P5-1",
+    lengthCm: 191,
+    camber: "Helium Plus",
+    hbw: 1.38,
+    fbw: 0.32,
+    minW: 75,
+    maxW: 88,
+    tempMin: -8,
+    tempMax: 3,
+    tag: "#speedmax",
+    notes: "Superlett Helium Core og toveis karbonvev. Ekstrem pendel og akselerasjon."
+  },
+  {
+    brand: "Fischer",
+    model: "Speedmax 3D Classic Plus (902)",
+    type: "Klassisk",
+    grind: "P5-1",
+    lengthCm: 207,
+    camber: "902 Klister/Universal",
+    hbw: 1.32,
+    fbw: 0.28,
+    minW: 76,
+    maxW: 88,
+    tempMin: -4,
+    tempMax: 5,
+    pocketFrontCm: 32,
+    pocketRearCm: 14,
+    tag: "#speedmax",
+    notes: "902-konstruksjon med kortere trykksoner og myk tupp/ende for klister og fuktig tørrvoks."
+  },
+  {
+    brand: "Fischer",
+    model: "Speedmax 3D Classic Cold (812)",
+    type: "Klassisk",
+    grind: "C12-1",
+    lengthCm: 207,
+    camber: "812 Kald Tørrvoks",
+    hbw: 1.15,
+    fbw: 0.18,
+    minW: 76,
+    maxW: 87,
+    tempMin: -18,
+    tempMax: -2,
+    pocketFrontCm: 38,
+    pocketRearCm: 16,
+    tag: "#speedmax",
+    notes: "812-kammer for tørrvoks under kalde forhold. Lang smørelomme og stabilt spenn."
+  },
+  {
+    brand: "Fischer",
+    model: "Twin Skin Speedmax 3D",
+    type: "Felleski",
+    grind: "P5-1",
+    lengthCm: 207,
+    camber: "Medium Racing",
+    hbw: 1.18,
+    fbw: 0.24,
+    minW: 75,
+    maxW: 88,
+    pocketFrontCm: 34,
+    pocketRearCm: 15,
+    tag: "#speedmax",
+    notes: "World Cup felleski med todelt 100% mohairfell for overlegen glid og kompromissløst feste."
+  },
+  {
+    brand: "Fischer",
+    model: "Carbonlite Skate Plus",
+    type: "Skate",
+    grind: "P5-1",
+    lengthCm: 191,
+    camber: "115 Universal",
+    hbw: 1.32,
+    fbw: 0.28,
+    minW: 74,
+    maxW: 86,
+    tempMin: -10,
+    tempMax: 2,
+    tag: "#carbonlite",
+    notes: "Tidligere toppmodell, fortsatt en av verdens mest populære konkurranse- og treningsski."
+  },
+  {
+    brand: "Fischer",
+    model: "Carbonlite Classic Plus",
+    type: "Klassisk",
+    grind: "P5-1",
+    lengthCm: 207,
+    camber: "Plus Universal",
+    hbw: 1.20,
+    fbw: 0.22,
+    minW: 75,
+    maxW: 87,
+    pocketFrontCm: 36,
+    pocketRearCm: 15,
+    tag: "#carbonlite",
+    notes: "Klassisk racer med fantastisk følelse i sporet og jevnt trykkfordelingskammer."
+  },
+
+  // MADSHUS
+  {
+    brand: "Madshus",
+    model: "Redline 3.0 Skate F2",
+    type: "Skate",
+    grind: "M62 Universal",
+    lengthCm: 192,
+    camber: "F2 Hard Track",
+    hbw: 1.42,
+    fbw: 0.32,
+    minW: 74,
+    maxW: 87,
+    tempMin: -8,
+    tempMax: 3,
+    tag: "#redline",
+    notes: "F2-kammeret er optimalisert for faste og harde spor med lengre trykksone og enorm returenergi."
+  },
+  {
+    brand: "Madshus",
+    model: "Redline 3.0 Skate F3",
+    type: "Skate",
+    grind: "M61 Cold",
+    lengthCm: 192,
+    camber: "F3 Soft Track / Cold",
+    hbw: 1.28,
+    fbw: 0.24,
+    minW: 74,
+    maxW: 86,
+    tempMin: -18,
+    tempMax: -3,
+    tag: "#redline",
+    notes: "F3-kammeret har kortere trykksone og mykere tupp/ende, suverent på mykere og kaldere underlag."
+  },
+  {
+    brand: "Madshus",
+    model: "Redline 3.0 Classic Cold",
+    type: "Klassisk",
+    grind: "M61 Cold",
+    lengthCm: 207,
+    camber: "Cold Tørrvoks",
+    hbw: 1.16,
+    fbw: 0.18,
+    minW: 75,
+    maxW: 88,
+    pocketFrontCm: 37,
+    pocketRearCm: 16,
+    tag: "#redline",
+    notes: "Lavt og dynamisk kammer for kald tørrvoks. Lett å tråkke ned for sikkert spikerfeste."
+  },
+  {
+    brand: "Madshus",
+    model: "Redline 3.0 Classic Warm",
+    type: "Klassisk",
+    grind: "M62 Warm",
+    lengthCm: 207,
+    camber: "Warm / Klister",
+    hbw: 1.34,
+    fbw: 0.29,
+    minW: 76,
+    maxW: 88,
+    pocketFrontCm: 32,
+    pocketRearCm: 14,
+    tag: "#redline",
+    notes: "Høyere spennkurve spesialtilpasset tykkere klisterlag og grov våt snø."
+  },
+  {
+    brand: "Madshus",
+    model: "Redline Skin Classic",
+    type: "Felleski",
+    grind: "M61 Universal",
+    lengthCm: 207,
+    camber: "Medium Skin",
+    hbw: 1.17,
+    fbw: 0.22,
+    minW: 75,
+    maxW: 88,
+    pocketFrontCm: 35,
+    pocketRearCm: 15,
+    tag: "#redline",
+    notes: "Toppmodell felleski med integrert progressiv fell for minimal friksjon i glidfasen."
+  },
+  {
+    brand: "Madshus",
+    model: "Race Pro Skate",
+    type: "Skate",
+    grind: "M5 Universal",
+    lengthCm: 192,
+    camber: "Universal",
+    hbw: 1.34,
+    fbw: 0.28,
+    minW: 73,
+    maxW: 86,
+    tempMin: -10,
+    tempMax: 2,
+    tag: "#racepro",
+    notes: "Konkurranse- og treningsski med PR90-kjerne og karbonarmering. Svært lettgått."
+  },
+  {
+    brand: "Madshus",
+    model: "Race Pro Classic",
+    type: "Klassisk",
+    grind: "M5 Universal",
+    lengthCm: 207,
+    camber: "Universal Classic",
+    hbw: 1.18,
+    fbw: 0.20,
+    minW: 74,
+    maxW: 87,
+    pocketFrontCm: 36,
+    pocketRearCm: 15,
+    tag: "#racepro",
+    notes: "Klassisk allrounder for aktive skiløpere og Birkebeineren med god stabilitet."
+  },
+  {
+    brand: "Madshus",
+    model: "Race Pro Skin",
+    type: "Felleski",
+    grind: "M5 Universal",
+    lengthCm: 207,
+    camber: "Universal Skin",
+    hbw: 1.15,
+    fbw: 0.21,
+    minW: 74,
+    maxW: 87,
+    pocketFrontCm: 35,
+    pocketRearCm: 15,
+    tag: "#racepro",
+    notes: "Populær trenings- og turrennmodell med integrert mohairfell for varierte norske vinterforhold."
+  },
+
+  // ATOMIC
+  {
+    brand: "Atomic",
+    model: "Redster S9 Gen S Skate",
+    type: "Skate",
+    grind: "AM6 Universal",
+    lengthCm: 183,
+    camber: "Speedline Universal",
+    hbw: 1.38,
+    fbw: 0.30,
+    minW: 73,
+    maxW: 88,
+    tempMin: -10,
+    tempMax: 3,
+    tag: "#redster",
+    notes: "Revolusjonerende 183 cm universalgeometri med innsving (Speedline) og ekstrem akselerasjon."
+  },
+  {
+    brand: "Atomic",
+    model: "Redster S9 Carbon Skate",
+    type: "Skate",
+    grind: "AM6 Universal",
+    lengthCm: 192,
+    camber: "Carbon Race Universal",
+    hbw: 1.36,
+    fbw: 0.29,
+    minW: 75,
+    maxW: 87,
+    tempMin: -8,
+    tempMax: 3,
+    tag: "#redster",
+    notes: "World Cup-skøyteski med Carbon Race Monocoque chassis og BI 6000 racingsåle."
+  },
+  {
+    brand: "Atomic",
+    model: "Redster S9 Carbon Skate Cold",
+    type: "Skate",
+    grind: "AM7 Cold",
+    lengthCm: 192,
+    camber: "Cold Hard Track",
+    hbw: 1.26,
+    fbw: 0.22,
+    minW: 74,
+    maxW: 86,
+    tempMin: -18,
+    tempMax: -2,
+    tag: "#redster",
+    notes: "Kaldspesifikk skøyteski med fin AM7-struktur og tilpassede trykkpunkter for knirkeføre."
+  },
+  {
+    brand: "Atomic",
+    model: "Redster C9 Carbon Classic Cold",
+    type: "Klassisk",
+    grind: "AM7 Cold",
+    lengthCm: 207,
+    camber: "Cold Dry Wax",
+    hbw: 1.15,
+    fbw: 0.17,
+    minW: 76,
+    maxW: 88,
+    pocketFrontCm: 38,
+    pocketRearCm: 16,
+    tag: "#redster",
+    notes: "Lavt tørrvokskammer for tørt vinterføre. Raskt spenn med maksimalt slipp bakover."
+  },
+  {
+    brand: "Atomic",
+    model: "Redster C9 Carbon Classic Plus",
+    type: "Klassisk",
+    grind: "AM6 Universal",
+    lengthCm: 207,
+    camber: "Plus Klister/Universal",
+    hbw: 1.30,
+    fbw: 0.27,
+    minW: 76,
+    maxW: 88,
+    pocketFrontCm: 33,
+    pocketRearCm: 14,
+    tag: "#redster",
+    notes: "Pluss-kammer med hevet smørelomme for klisterdekke og fuktig kunstsnø."
+  },
+  {
+    brand: "Atomic",
+    model: "Redster C9 Carbon Skintec",
+    type: "Felleski",
+    grind: "AM7 Universal",
+    lengthCm: 207,
+    camber: "Universal Skin",
+    hbw: 1.14,
+    fbw: 0.23,
+    minW: 75,
+    maxW: 88,
+    pocketFrontCm: 35,
+    pocketRearCm: 15,
+    tag: "#redster",
+    notes: "Atomic sin raskeste felleski med 100% Mohair og utskiftbare feller (Easy Skin Exchange)."
+  },
+  {
+    brand: "Atomic",
+    model: "Redster C8 Skintec",
+    type: "Felleski",
+    grind: "AM6 Universal",
+    lengthCm: 205,
+    camber: "Sport Universal",
+    hbw: 1.12,
+    fbw: 0.20,
+    minW: 74,
+    maxW: 87,
+    pocketFrontCm: 34,
+    pocketRearCm: 15,
+    tag: "#redster",
+    notes: "Favoritt til Birkebeineren og lange skiturer, stabilt feste og god slitestyrke."
+  },
+
+  // ROSSIGNOL
+  {
+    brand: "Rossignol",
+    model: "X-IUM Premium+ Skate S2",
+    type: "Skate",
+    grind: "K7 Universal",
+    lengthCm: 193,
+    camber: "S2 Universal",
+    hbw: 1.38,
+    fbw: 0.30,
+    minW: 74,
+    maxW: 87,
+    tempMin: -8,
+    tempMax: 2,
+    tag: "#rossignol",
+    notes: "Universalmodellen med fleksibel tupp og bakende for dynamisk glidefase og stabilitet."
+  },
+  {
+    brand: "Rossignol",
+    model: "X-IUM Premium+ Skate S1",
+    type: "Skate",
+    grind: "K6 Cold",
+    lengthCm: 193,
+    camber: "S1 Cold / Hard",
+    hbw: 1.28,
+    fbw: 0.22,
+    minW: 74,
+    maxW: 86,
+    tempMin: -18,
+    tempMax: -3,
+    tag: "#rossignol",
+    notes: "Kaldski med stivere tupp/bakski og lengre kontaktflate for harde og kalde løyper."
+  },
+  {
+    brand: "Rossignol",
+    model: "X-IUM Premium+ Skate S3",
+    type: "Skate",
+    grind: "K9 Våt / Kunstsnø",
+    lengthCm: 193,
+    camber: "S3 White Base / Warm",
+    hbw: 1.45,
+    fbw: 0.35,
+    minW: 76,
+    maxW: 89,
+    tempMin: -2,
+    tempMax: 6,
+    tag: "#rossignol",
+    notes: "Våt- og vårsnøspesialist med hvit/transparent såle og kort bæreflate for å bryte vannsuget."
+  },
+  {
+    brand: "Rossignol",
+    model: "X-IUM Premium+ Classic C2",
+    type: "Klassisk",
+    grind: "K7 Universal",
+    lengthCm: 207,
+    camber: "C2 Universal",
+    hbw: 1.20,
+    fbw: 0.21,
+    minW: 76,
+    maxW: 88,
+    pocketFrontCm: 36,
+    pocketRearCm: 15,
+    tag: "#rossignol",
+    notes: "Allround racingski med fantastisk respons i frasparket og jevnt trykk over lommen."
+  },
+  {
+    brand: "Rossignol",
+    model: "X-IUM Premium+ Classic C1",
+    type: "Klassisk",
+    grind: "K6 Cold",
+    lengthCm: 207,
+    camber: "C1 Cold Dry Wax",
+    hbw: 1.13,
+    fbw: 0.17,
+    minW: 75,
+    maxW: 87,
+    pocketFrontCm: 38,
+    pocketRearCm: 16,
+    tag: "#rossignol",
+    notes: "Kaldspenn for tørrvoks, myk profil og enestående spikerslipp i kalde skispor."
+  },
+  {
+    brand: "Rossignol",
+    model: "X-IUM Premium+ R-Skin",
+    type: "Felleski",
+    grind: "K7 Universal",
+    lengthCm: 207,
+    camber: "Racing R-Skin",
+    hbw: 1.16,
+    fbw: 0.22,
+    minW: 75,
+    maxW: 88,
+    pocketFrontCm: 35,
+    pocketRearCm: 15,
+    tag: "#rossignol",
+    notes: "Racing felleski med 100% Mohair og Nomex Honeycomb kjerne. Fantastisk følelse."
+  },
+  {
+    brand: "Rossignol",
+    model: "X-IUM Skate",
+    type: "Skate",
+    grind: "K7 Universal",
+    lengthCm: 193,
+    camber: "Universal",
+    hbw: 1.34,
+    fbw: 0.27,
+    minW: 73,
+    maxW: 86,
+    tempMin: -10,
+    tempMax: 2,
+    tag: "#rossignol",
+    notes: "Svært populær treningsski som gir mye av World Cup-følelsen til en lavere pris."
+  },
+
+  // SALOMON
+  {
+    brand: "Salomon",
+    model: "S/Lab Carbon Skate Yellow",
+    type: "Skate",
+    grind: "G5 Universal",
+    lengthCm: 192,
+    camber: "Universal / Allround",
+    hbw: 1.38,
+    fbw: 0.30,
+    minW: 74,
+    maxW: 88,
+    tempMin: -8,
+    tempMax: 3,
+    tag: "#salomon",
+    notes: "Salomons mest allsidige toppmodell. Karbonoppbygging gir eksplosiv akselerasjon."
+  },
+  {
+    brand: "Salomon",
+    model: "S/Lab Carbon Skate Blue",
+    type: "Skate",
+    grind: "G5 Cold",
+    lengthCm: 192,
+    camber: "Cold Dry Snow",
+    hbw: 1.25,
+    fbw: 0.21,
+    minW: 73,
+    maxW: 86,
+    tempMin: -20,
+    tempMax: -3,
+    tag: "#salomon",
+    notes: "Kaldmodell for tørr og finkornet snø med lav spennhøyde og myk tupp."
+  },
+  {
+    brand: "Salomon",
+    model: "S/Lab Carbon Skate Red",
+    type: "Skate",
+    grind: "G5 Warm / Wet",
+    lengthCm: 192,
+    camber: "Warm / Wet Snow",
+    hbw: 1.44,
+    fbw: 0.34,
+    minW: 75,
+    maxW: 89,
+    tempMin: -2,
+    tempMax: 6,
+    tag: "#salomon",
+    notes: "Pluss- og våtsnøski med hevet spenn og grov steinslip for å unngå sugeffekt."
+  },
+  {
+    brand: "Salomon",
+    model: "S/Lab Carbon Classic Cold",
+    type: "Klassisk",
+    grind: "G5 Cold",
+    lengthCm: 206,
+    camber: "Cold Dry Wax",
+    hbw: 1.15,
+    fbw: 0.18,
+    minW: 75,
+    maxW: 87,
+    pocketFrontCm: 37,
+    pocketRearCm: 16,
+    tag: "#salomon",
+    notes: "Kald tørrvoksski med jevnt lavt kammer for uanstrengt fraspark i kalde spor."
+  },
+  {
+    brand: "Salomon",
+    model: "S/Lab Carbon Classic Warm",
+    type: "Klassisk",
+    grind: "G5 Warm",
+    lengthCm: 206,
+    camber: "Warm Klister",
+    hbw: 1.33,
+    fbw: 0.28,
+    minW: 76,
+    maxW: 88,
+    pocketFrontCm: 32,
+    pocketRearCm: 14,
+    tag: "#salomon",
+    notes: "Klassisk klisterski med høyere sluttspenn som holder smøringen fri fra snøen i glid."
+  },
+  {
+    brand: "Salomon",
+    model: "S/Lab Carbon eSkin",
+    type: "Felleski",
+    grind: "G5 Universal",
+    lengthCm: 206,
+    camber: "Racing eSkin",
+    hbw: 1.15,
+    fbw: 0.22,
+    minW: 75,
+    maxW: 88,
+    pocketFrontCm: 35,
+    pocketRearCm: 15,
+    tag: "#salomon",
+    notes: "Toppmodell felleski med 100% mohairfell og ultralett karbonkonstruksjon."
+  },
+  {
+    brand: "Salomon",
+    model: "S/Max Carbon Skate",
+    type: "Skate",
+    grind: "G5 Universal",
+    lengthCm: 192,
+    camber: "Universal",
+    hbw: 1.32,
+    fbw: 0.27,
+    minW: 73,
+    maxW: 86,
+    tempMin: -10,
+    tempMax: 2,
+    tag: "#salomon",
+    notes: "Høyytelses trenings- og turrennski bygget på samme lest som S/Lab."
+  },
+  {
+    brand: "Salomon",
+    model: "S/Max eSkin",
+    type: "Felleski",
+    grind: "G5 Universal",
+    lengthCm: 206,
+    camber: "Medium eSkin",
+    hbw: 1.12,
+    fbw: 0.21,
+    minW: 74,
+    maxW: 87,
+    pocketFrontCm: 34,
+    pocketRearCm: 15,
+    tag: "#salomon",
+    notes: "Klassisk felleski for krevende mosjonister og birkebeinere. Pålitelig feste."
+  },
+
+  // KÄSTLE
+  {
+    brand: "Kästle",
+    model: "RX10 2.0 Classic Cold",
+    type: "Klassisk",
+    grind: "CW1 Cold",
+    lengthCm: 206,
+    camber: "Cold Tørrvoks",
+    hbw: 1.22,
+    fbw: 0.20,
+    minW: 76,
+    maxW: 88,
+    tempMin: -16,
+    tempMax: -2,
+    pocketFrontCm: 36,
+    pocketRearCm: 16,
+    tag: "#kastle",
+    notes: "Hollowtech 2.0 i tuppen for optimal svingvekt. CW1 kaldsteinslip for tørr finkornet snø."
+  },
+  {
+    brand: "Kästle",
+    model: "RX10 2.0 Classic Plus",
+    type: "Klassisk",
+    grind: "CW2 Warm",
+    lengthCm: 206,
+    camber: "Plus Klister",
+    hbw: 1.35,
+    fbw: 0.28,
+    minW: 78,
+    maxW: 90,
+    tempMin: -3,
+    tempMax: 5,
+    pocketFrontCm: 31,
+    pocketRearCm: 14,
+    tag: "#kastle",
+    notes: "Plus-kammer med hevet bæreflate for klisterdekke og fuktige forhold."
+  },
+  {
+    brand: "Kästle",
+    model: "RX10 2.0 Skate",
+    type: "Skate",
+    grind: "UW-1 Universal",
+    lengthCm: 192,
+    camber: "Universal",
+    hbw: 1.40,
+    fbw: 0.35,
+    minW: 75,
+    maxW: 88,
+    tempMin: -10,
+    tempMax: 2,
+    tag: "#kastle",
+    notes: "Hollowtech karbonkonstruksjon med fantastisk returenergi og stabilitet på faste spor."
+  },
+  {
+    brand: "Kästle",
+    model: "RX10 2.0 Skate Plus",
+    type: "Skate",
+    grind: "UW-2 Warm",
+    lengthCm: 192,
+    camber: "Plus / Våt",
+    hbw: 1.44,
+    fbw: 0.36,
+    minW: 76,
+    maxW: 89,
+    tempMin: -2,
+    tempMax: 6,
+    tag: "#kastle",
+    notes: "Optimalisert for fuktig og grov snø med hevet trykksone og grovere slipestruktur."
+  },
+  {
+    brand: "Kästle",
+    model: "RX10 2.0 Skin Classic",
+    type: "Felleski",
+    grind: "CW1 Universal",
+    lengthCm: 206,
+    camber: "Universal Skin",
+    hbw: 1.18,
+    fbw: 0.23,
+    minW: 75,
+    maxW: 88,
+    pocketFrontCm: 35,
+    pocketRearCm: 15,
+    tag: "#kastle",
+    notes: "Toppmodell felleski med 100% mohair og racing honeycombmaterie."
+  },
+  {
+    brand: "Kästle",
+    model: "XP20 Skate",
+    type: "Skate",
+    grind: "Universal",
+    lengthCm: 192,
+    camber: "Universal",
+    hbw: 1.34,
+    fbw: 0.28,
+    minW: 73,
+    maxW: 86,
+    tempMin: -10,
+    tempMax: 2,
+    tag: "#kastle",
+    notes: "High-end treningsski med Honeycomb kjerne og karbonforsterkning."
+  },
+  {
+    brand: "Kästle",
+    model: "XP20 Classic",
+    type: "Klassisk",
+    grind: "Universal",
+    lengthCm: 206,
+    camber: "Universal",
+    hbw: 1.18,
+    fbw: 0.22,
+    minW: 74,
+    maxW: 87,
+    pocketFrontCm: 35,
+    pocketRearCm: 15,
+    tag: "#kastle",
+    notes: "Klassisk trenings- og turrennmodell for mosjonister og aktive skiløpere."
+  },
+  {
+    brand: "Kästle",
+    model: "XP20 Skin Classic",
+    type: "Felleski",
+    grind: "Universal",
+    lengthCm: 206,
+    camber: "Universal Skin",
+    hbw: 1.14,
+    fbw: 0.21,
+    minW: 74,
+    maxW: 87,
+    pocketFrontCm: 34,
+    pocketRearCm: 15,
+    tag: "#kastle",
+    notes: "Pålitelig felleski for lange treningsturer i all slags vær."
+  }
 ];
 
 const INITIAL_MEMBERS = [
@@ -477,13 +1220,10 @@ export default function Home() {
   const [ocrStatus, setOcrStatus] = useState("");
   const videoRef = useRef(null);
 
-  // AI Skiskanning (Tupp, Bak, Etikett med Gemini)
-  const [aiSkiPhotos, setAiSkiPhotos] = useState([]);
-  const [aiSkiScanning, setAiSkiScanning] = useState(false);
-  const [aiSkiScanStatus, setAiSkiScanStatus] = useState("");
-  const [aiSkiScanResult, setAiSkiScanResult] = useState(null);
-  const aiSkiFileInputRef = useRef(null);
-  const aiSkiCameraInputRef = useRef(null);
+  // Forvalgsdatabase (Preset filter & søk)
+  const [presetBrandFilter, setPresetBrandFilter] = useState("Alle");
+  const [presetTypeFilter, setPresetTypeFilter] = useState("Alle");
+  const [presetSearch, setPresetSearch] = useState("");
 
   const skiselectorFileInputRef = useRef(null);
   const qrFileInputRef = useRef(null);
@@ -821,16 +1561,19 @@ export default function Home() {
       brand: p.brand,
       model: p.model,
       type: p.type,
-      grind: p.grind,
+      grind: p.grind || "Standard",
       lengthCm: p.lengthCm,
-      camberType: p.camber,
-      hbw: String(p.hbw),
-      fbw: String(p.fbw),
+      camberType: p.camber || "Universal",
+      hbw: p.hbw !== undefined && p.hbw !== null ? String(p.hbw) : prev.hbw,
+      fbw: p.fbw !== undefined && p.fbw !== null ? String(p.fbw) : prev.fbw,
       weightKgMin: p.minW,
       weightKgMax: p.maxW,
-      tag: `#${p.brand.toLowerCase()}`,
-      tempOptimalMin: p.tempMin,
-      tempOptimalMax: p.tempMax
+      pocketFrontCm: p.pocketFrontCm ? String(p.pocketFrontCm) : (p.type === "Skate" ? "" : "35"),
+      pocketRearCm: p.pocketRearCm ? String(p.pocketRearCm) : (p.type === "Skate" ? "" : "15"),
+      tag: p.tag || `#${p.brand.toLowerCase()}`,
+      tempOptimalMin: p.tempMin ?? -10,
+      tempOptimalMax: p.tempMax ?? 0,
+      notes: p.notes || `${p.brand} ${p.model}`
     }));
   };
 
@@ -978,129 +1721,6 @@ export default function Home() {
     }
   };
 
-  const handleAiSkiFilesSelected = (e) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const dataUrl = event.target?.result;
-        setAiSkiPhotos(prev => [
-          ...prev,
-          {
-            id: 'photo-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
-            name: file.name,
-            dataUrl: dataUrl,
-            mimeType: file.type || 'image/jpeg',
-            label: prev.length === 0 ? 'Tupp / Merke' : (prev.length === 1 ? 'Bakski / Modell' : 'Etikett / Måledata')
-          }
-        ]);
-      };
-      reader.readAsDataURL(file);
-    });
-    e.target.value = '';
-  };
-
-  const handleLoadKastleSamplePhotos = () => {
-    setAiSkiPhotos([
-      {
-        id: 'sample-1',
-        name: 'Tupp & Merke (Kästle)',
-        dataUrl: '/assets/aistudio/PXL_20261108_122311338_9829bbe9.jpg',
-        serverSamplePath: '/assets/aistudio/PXL_20261108_122311338_9829bbe9.jpg',
-        label: 'Tupp & Merke'
-      },
-      {
-        id: 'sample-2',
-        name: 'Bakski (206 Classic Cold RX 10 2.0)',
-        dataUrl: '/assets/aistudio/PXL_20261108_122314676_58c3c4bc.jpg',
-        serverSamplePath: '/assets/aistudio/PXL_20261108_122314676_58c3c4bc.jpg',
-        label: 'Bakski & Lengde'
-      },
-      {
-        id: 'sample-3',
-        name: 'Fabrikketikett (CW1, 65-85kg, 1.29mm)',
-        dataUrl: '/assets/aistudio/PXL_20261108_122159224.MP_e372a19b.jpg',
-        serverSamplePath: '/assets/aistudio/PXL_20261108_122159224.MP_e372a19b.jpg',
-        label: 'Spesifikasjoner & Slip'
-      }
-    ]);
-  };
-
-  const handleRemoveAiSkiPhoto = (photoId) => {
-    setAiSkiPhotos(prev => prev.filter(p => p.id !== photoId));
-  };
-
-  const handleRunAiSkiScan = async () => {
-    if (aiSkiPhotos.length === 0) {
-      alert("Vennligst ta eller last opp minst ett bilde av skien først (f.eks. tupp, bakski eller etikett).");
-      return;
-    }
-
-    setAiSkiScanning(true);
-    setAiSkiScanStatus("Sender bilder til Gemini multimodal AI...");
-
-    try {
-      const payloadImages = [];
-      const payloadSamplePaths = [];
-
-      aiSkiPhotos.forEach(p => {
-        if (p.serverSamplePath) {
-          payloadSamplePaths.push(p.serverSamplePath);
-        } else if (p.dataUrl && p.dataUrl.startsWith('data:image')) {
-          payloadImages.push({
-            mimeType: p.mimeType || 'image/jpeg',
-            data: p.dataUrl
-          });
-        }
-      });
-
-      setAiSkiScanStatus("Gemini AI analyserer tupp, modell, lengde, etikett og slip...");
-
-      const res = await fetch('/api/ai/scan-ski', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          images: payloadImages,
-          samplePaths: payloadSamplePaths
-        })
-      });
-
-      const result = await res.json();
-      if (!res.ok || !result.success) {
-        throw new Error(result.error || "AI-skanningen feilet.");
-      }
-
-      const data = result.data;
-      setAiSkiScanResult(data);
-
-      // Fyll automatisk inn i newSkiData
-      setNewSkiData(prev => ({
-        ...prev,
-        brand: data.brand || prev.brand,
-        model: data.model || prev.model,
-        type: data.type || prev.type,
-        camberType: data.camberType || prev.camberType,
-        lengthCm: data.lengthCm || prev.lengthCm,
-        weightKgMin: data.weightKgMin || prev.weightKgMin,
-        weightKgMax: data.weightKgMax || prev.weightKgMax,
-        grind: data.grind || prev.grind,
-        hbw: data.hbw !== undefined && data.hbw !== null ? String(data.hbw) : prev.hbw,
-        fbw: data.fbw !== undefined && data.fbw !== null ? String(data.fbw) : prev.fbw,
-        pocketFrontCm: data.pocketFrontCm !== undefined && data.pocketFrontCm !== null ? String(data.pocketFrontCm) : prev.pocketFrontCm,
-        pocketRearCm: data.pocketRearCm !== undefined && data.pocketRearCm !== null ? String(data.pocketRearCm) : prev.pocketRearCm,
-        tag: data.tag || prev.tag,
-        notes: data.notes || prev.notes
-      }));
-
-      setAiSkiScanStatus("✓ AI-analyse fullført!");
-    } catch (err) {
-      alert("Feil under AI-skanning: " + err.message);
-    } finally {
-      setAiSkiScanning(false);
-    }
-  };
 
   const handleExecuteFamilyTransfer = () => {
     if (!passportModalSki || !transferTargetMemberId) return;
@@ -3377,28 +3997,8 @@ export default function Home() {
           <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '22px', padding: '30px', maxWidth: '720px', margin: '0 auto' }}>
             <h2 style={{ fontSize: '22px', margin: '0 0 6px 0', fontWeight: '800' }}>➕ Registrer skipar</h2>
             <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#64748b' }}>
-              Bruk AI-skanning med kamera (tupp, bak og etikett), last opp Skiselector-rapport, eller fyll ut manuelt:
+              Velg fra databasen over racingmodeller nedenfor for lynrask autofylling, last opp en Skiselector-rapport, eller fyll ut manuelt:
             </p>
-
-            {/* SKJULT FIL-INPUT FOR AI BILDER (GALLERI / FLERE FILER) */}
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              ref={aiSkiFileInputRef}
-              style={{ display: 'none' }}
-              onChange={handleAiSkiFilesSelected}
-            />
-
-            {/* SKJULT KAMERA-INPUT FOR DIREKTE BILDETAKING PÅ MOBIL */}
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              ref={aiSkiCameraInputRef}
-              style={{ display: 'none' }}
-              onChange={handleAiSkiFilesSelected}
-            />
 
             {/* SKJULT FIL-INPUT FOR SKISELECTOR */}
             <input
@@ -3409,170 +4009,223 @@ export default function Home() {
               onChange={handleScanSkiselectorForNewSki}
             />
 
-            {/* HOVEDSEKSJON: AI SKISKANNING (TUPP + BAK + ETIKETT) */}
-            <div style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)', border: '2px solid #0284c7', borderRadius: '20px', padding: '20px', marginBottom: '20px', boxShadow: '0 4px 14px rgba(2, 132, 199, 0.08)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '28px' }}>📸</span>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>
-                        AI Skiskanning (Tupp + Bak + Etikett)
-                      </h3>
-                      <span style={{ background: '#7c3aed', color: '#ffffff', fontSize: '10px', fontWeight: '900', padding: '2px 8px', borderRadius: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                        Gemini 3.8 Flash
-                      </span>
-                    </div>
-                    <p style={{ margin: '3px 0 0 0', fontSize: '13px', color: '#64748b' }}>
-                      Ta bilder av tupp (merke), bakski (modell og lengde) og fabrikketikett (måledata og slip).
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleLoadKastleSamplePhotos}
-                  style={{ background: '#ffffff', border: '1.5px solid #38bdf8', color: '#0369a1', padding: '8px 12px', borderRadius: '10px', fontSize: '12px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 2px 4px rgba(0,0,0,0.03)' }}
-                >
-                  <span>✨</span>
-                  <span>Test med dine Kästle-eksempler</span>
-                </button>
-              </div>
-
-              {/* BILDER I GALLERIET */}
-              {aiSkiPhotos.length > 0 ? (
-                <div style={{ marginTop: '14px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px', marginBottom: '14px' }}>
-                    {aiSkiPhotos.map((photo) => (
-                      <div key={photo.id} style={{ position: 'relative', background: '#ffffff', border: '1.5px solid #cbd5e1', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}>
-                        <div style={{ height: '110px', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                          <img
-                            src={photo.dataUrl}
-                            alt={photo.name}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          />
-                        </div>
-                        <div style={{ padding: '6px 8px', fontSize: '11px', fontWeight: '700', color: '#334155', background: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {photo.label || photo.name}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveAiSkiPhoto(photo.id)}
-                          style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(15,23,42,0.75)', color: '#ffffff', border: 'none', borderRadius: '50%', width: '22px', height: '22px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          title="Fjern bilde"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-
-                    {/* LEGG TIL FLERE BILDER */}
-                    <button
-                      type="button"
-                      onClick={() => aiSkiFileInputRef.current?.click()}
-                      style={{ height: '140px', border: '2px dashed #94a3b8', borderRadius: '12px', background: '#ffffff', color: '#64748b', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '700' }}
-                    >
-                      <span style={{ fontSize: '24px' }}>➕</span>
-                      <span>Legg til bilde</span>
-                    </button>
-                  </div>
-
-                  {/* START ANALYSE KNAPP */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                    <button
-                      type="button"
-                      disabled={aiSkiScanning}
-                      onClick={handleRunAiSkiScan}
-                      style={{ background: '#0284c7', color: '#ffffff', border: 'none', padding: '12px 22px', borderRadius: '12px', fontWeight: '800', fontSize: '14px', cursor: aiSkiScanning ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)' }}
-                    >
-                      <span>{aiSkiScanning ? '⏳' : '🚀'}</span>
-                      <span>{aiSkiScanning ? 'Analyserer med Gemini AI...' : `Start AI-analyse (${aiSkiPhotos.length} bilde${aiSkiPhotos.length > 1 ? 'r' : ''})`}</span>
-                    </button>
-                    {aiSkiScanStatus && (
-                      <span style={{ fontSize: '13px', fontWeight: '700', color: aiSkiScanStatus.includes('✓') ? '#15803d' : '#0284c7' }}>
-                        {aiSkiScanStatus}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div style={{ marginTop: '12px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    onClick={() => aiSkiCameraInputRef.current?.click()}
-                    style={{ flex: 1, minWidth: '180px', border: '2px solid #0284c7', borderRadius: '12px', padding: '14px', background: '#eff6ff', color: '#0284c7', fontWeight: '800', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                  >
-                    <span>📷</span>
-                    <span>Knips bilde med mobilkamera</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => aiSkiFileInputRef.current?.click()}
-                    style={{ flex: 1, minWidth: '180px', border: '1.5px solid #cbd5e1', borderRadius: '12px', padding: '14px', background: '#ffffff', color: '#334155', fontWeight: '800', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                  >
-                    <span>📁</span>
-                    <span>Velg bilder fra enhet / galleri</span>
-                  </button>
-                </div>
-              )}
-
-              {/* AI RESULTATKORT */}
-              {aiSkiScanResult && (
-                <div style={{ marginTop: '16px', background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: '14px', padding: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '20px' }}>🎉</span>
-                    <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#166534' }}>
-                      AI identifiserte: {aiSkiScanResult.brand} {aiSkiScanResult.model} ({aiSkiScanResult.lengthCm} cm)
-                    </h4>
-                  </div>
-                  <p style={{ margin: '0 0 10px 0', fontSize: '13px', color: '#15803d', lineHeight: 1.4 }}>
-                    {aiSkiScanResult.analysisSummary}
-                  </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', fontSize: '12px', background: '#ffffff', padding: '10px', borderRadius: '10px', border: '1px solid #bbf7d0' }}>
-                    <div>HBW (Glid): <strong style={{ color: '#0284c7' }}>{aiSkiScanResult.hbw} mm</strong></div>
-                    <div>FBW (Feste): <strong style={{ color: '#ea580c' }}>{aiSkiScanResult.fbw} mm</strong></div>
-                    <div>Løpervekt: <strong>{aiSkiScanResult.weightKgMin}-{aiSkiScanResult.weightKgMax} kg</strong></div>
-                    <div>Slip: <strong style={{ color: '#166534' }}>{aiSkiScanResult.grind || 'Standard'}</strong></div>
-                    <div>Lomme: <strong>+{aiSkiScanResult.pocketFrontCm} / -{aiSkiScanResult.pocketRearCm} cm</strong></div>
-                    {aiSkiScanResult.stiffnessKg && <div>Stivhet: <strong>{aiSkiScanResult.stiffnessKg} kg</strong></div>}
-                  </div>
-                  <div style={{ marginTop: '8px', fontSize: '11px', color: '#166534', fontWeight: '700' }}>
-                    ✓ Skjemaet nedenfor er automatisk oppdatert. Gjør eventuelle justeringer og trykk «✓ Lagre ski i stallen».
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* SEKUNDÆRE METODER: SKISELECTOR OG QR */}
+            {/* HURTIGMETODER: SKISELECTOR OG QR */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
               <button
                 type="button"
                 onClick={() => skiselectorFileInputRef.current?.click()}
-                style={{ border: '1.5px solid #cbd5e1', borderRadius: '12px', padding: '12px', textAlign: 'center', cursor: 'pointer', background: '#f8fafc', color: '#334155', fontWeight: '700', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                style={{ border: '2px solid #0284c7', borderRadius: '14px', padding: '14px 16px', textAlign: 'center', cursor: 'pointer', background: '#eff6ff', color: '#0369a1', fontWeight: '800', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 2px 6px rgba(2, 132, 199, 0.08)' }}
               >
-                <span>📊</span>
+                <span style={{ fontSize: '20px' }}>📊</span>
                 <span>Last opp Skiselector-rapport</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => startCameraScanner("new")}
-                style={{ border: '1.5px solid #cbd5e1', borderRadius: '12px', padding: '12px', textAlign: 'center', cursor: 'pointer', background: '#f8fafc', color: '#334155', fontWeight: '700', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                style={{ border: '1.5px solid #cbd5e1', borderRadius: '14px', padding: '14px 16px', textAlign: 'center', cursor: 'pointer', background: '#f8fafc', color: '#334155', fontWeight: '800', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
               >
-                <span>📷</span>
-                <span>Skann QR / Strekkode</span>
+                <span style={{ fontSize: '20px' }}>📷</span>
+                <span>Skann QR / Strekkode med kamera</span>
               </button>
             </div>
 
-            {/* PRESETS */}
-            <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '16px' }}>
-              <div style={{ fontSize: '11px', fontWeight: '800', color: '#475569', marginBottom: '6px' }}>⚡ ETT-KLIKK FORVALG:</div>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', maxHeight: '90px', overflowY: 'auto' }}>
-                {RACING_PRESETS.map((p, i) => (
-                  <button key={i} type="button" onClick={() => handleApplyPreset(p)} style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
-                    {p.brand} {p.model}
-                  </button>
-                ))}
+            {/* RACING & HIGH-END MODELLDATABASE */}
+            <div style={{ background: '#f8fafc', border: '1.5px solid #cbd5e1', borderRadius: '18px', padding: '18px', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '20px' }}>🎿</span>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a' }}>
+                    Racingski-database ({RACING_PRESETS.length} toppmodeller)
+                  </h3>
+                </div>
+                <span style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', background: '#ffffff', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '8px' }}>
+                  1-klikks forvalg
+                </span>
+              </div>
+
+              <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#64748b' }}>
+                Velg merke og modell for å fylle inn fabrikkspesifikasjoner, spenntype, slipestruktur og typiske Skiselector-måledata automatisk:
+              </p>
+
+              {/* MERKE-FILTER KNAPPER */}
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                {["Alle", "Fischer", "Madshus", "Atomic", "Rossignol", "Salomon", "Kästle"].map((b) => {
+                  const isSelected = presetBrandFilter.toLowerCase() === b.toLowerCase();
+                  const count = b === "Alle" ? RACING_PRESETS.length : RACING_PRESETS.filter(p => p.brand.toLowerCase() === b.toLowerCase()).length;
+                  return (
+                    <button
+                      key={b}
+                      type="button"
+                      onClick={() => setPresetBrandFilter(b)}
+                      style={{
+                        background: isSelected ? '#0284c7' : '#ffffff',
+                        color: isSelected ? '#ffffff' : '#334155',
+                        border: isSelected ? '1.5px solid #0284c7' : '1px solid #cbd5e1',
+                        padding: '6px 12px',
+                        borderRadius: '10px',
+                        fontSize: '12px',
+                        fontWeight: '800',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {b} <span style={{ opacity: isSelected ? 0.9 : 0.6, fontSize: '11px', fontWeight: 'normal' }}>({count})</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* STILART & SØK */}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  {[
+                    { id: "Alle", label: "Alle stilarter" },
+                    { id: "Klassisk", label: "🎿 Klassisk" },
+                    { id: "Skate", label: "⚡ Skate" },
+                    { id: "Felleski", label: "🌿 Felleski" }
+                  ].map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setPresetTypeFilter(t.id)}
+                      style={{
+                        background: presetTypeFilter === t.id ? '#0f172a' : '#f1f5f9',
+                        color: presetTypeFilter === t.id ? '#ffffff' : '#475569',
+                        border: 'none',
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ flex: 1, minWidth: '160px' }}>
+                  <input
+                    type="text"
+                    placeholder="🔍 Søk modell, slip (P5-1, CW1, M61, AM6...), kammer..."
+                    value={presetSearch}
+                    onChange={(e) => setPresetSearch(e.target.value)}
+                    style={{
+                      width: '100%',
+                      background: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '8px',
+                      padding: '6px 10px',
+                      fontSize: '12px',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* LISTE / GRID OVER MODELLER */}
+              <div style={{ maxHeight: '240px', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '8px', paddingRight: '4px' }}>
+                {RACING_PRESETS
+                  .filter(p => {
+                    const matchesBrand = presetBrandFilter === "Alle" || p.brand.toLowerCase() === presetBrandFilter.toLowerCase();
+                    const matchesType = presetTypeFilter === "Alle" || p.type === presetTypeFilter;
+                    const q = presetSearch.toLowerCase().trim();
+                    const matchesSearch = !q ||
+                      p.brand.toLowerCase().includes(q) ||
+                      p.model.toLowerCase().includes(q) ||
+                      (p.grind && p.grind.toLowerCase().includes(q)) ||
+                      (p.camber && p.camber.toLowerCase().includes(q)) ||
+                      (p.notes && p.notes.toLowerCase().includes(q));
+                    return matchesBrand && matchesType && matchesSearch;
+                  })
+                  .map((p, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '10px',
+                        padding: '10px 12px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        gap: '6px',
+                        transition: 'box-shadow 0.15s ease'
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px', marginBottom: '4px' }}>
+                          <div>
+                            <span style={{ fontSize: '10px', fontWeight: '900', color: '#0284c7', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                              {p.brand}
+                            </span>
+                            <div style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>
+                              {p.model}
+                            </div>
+                          </div>
+                          <span style={{
+                            background: p.type === "Skate" ? '#e0e7ff' : p.type === "Felleski" ? '#dcfce7' : '#fef3c7',
+                            color: p.type === "Skate" ? '#3730a3' : p.type === "Felleski" ? '#166534' : '#92400e',
+                            fontSize: '10px',
+                            fontWeight: '800',
+                            padding: '2px 6px',
+                            borderRadius: '6px',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {p.type}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', fontSize: '11px', color: '#475569', marginBottom: '4px' }}>
+                          <span style={{ background: '#f1f5f9', padding: '1px 5px', borderRadius: '4px', fontWeight: '600' }}>
+                            📏 {p.lengthCm} cm
+                          </span>
+                          <span style={{ background: '#f1f5f9', padding: '1px 5px', borderRadius: '4px', fontWeight: '600' }}>
+                            ⚖️ {p.minW}-{p.maxW} kg
+                          </span>
+                          {p.grind && (
+                            <span style={{ background: '#ecfdf5', color: '#065f46', padding: '1px 5px', borderRadius: '4px', fontWeight: '700' }}>
+                              Slip: {p.grind}
+                            </span>
+                          )}
+                          {p.camber && (
+                            <span style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '1px 5px', borderRadius: '4px' }}>
+                              {p.camber}
+                            </span>
+                          )}
+                        </div>
+
+                        {p.notes && (
+                          <div style={{ fontSize: '11px', color: '#64748b', lineHeight: 1.3, marginBottom: '6px' }}>
+                            {p.notes}
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleApplyPreset(p)}
+                        style={{
+                          background: '#f0f9ff',
+                          border: '1px solid #bae6fd',
+                          color: '#0369a1',
+                          padding: '6px 10px',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          fontWeight: '800',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <span>⚡</span>
+                        <span>Velg forvalg</span>
+                      </button>
+                    </div>
+                  ))}
               </div>
             </div>
 
