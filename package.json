@@ -9,6 +9,7 @@
     "lint": "echo 'Lint check passed'"
   },
   "dependencies": {
+    "@google/genai": "^3.0.0",
     "@supabase/supabase-js": "^2.48.0",
     "lucide-react": "^0.475.0",
     "next": "^15.1.12",

@@ -477,6 +477,14 @@ export default function Home() {
   const [ocrStatus, setOcrStatus] = useState("");
   const videoRef = useRef(null);
 
+  // AI Skiskanning (Tupp, Bak, Etikett med Gemini)
+  const [aiSkiPhotos, setAiSkiPhotos] = useState([]);
+  const [aiSkiScanning, setAiSkiScanning] = useState(false);
+  const [aiSkiScanStatus, setAiSkiScanStatus] = useState("");
+  const [aiSkiScanResult, setAiSkiScanResult] = useState(null);
+  const aiSkiFileInputRef = useRef(null);
+  const aiSkiCameraInputRef = useRef(null);
+
   const skiselectorFileInputRef = useRef(null);
   const qrFileInputRef = useRef(null);
   const detailSkiselectorFileInputRef = useRef(null);
@@ -967,6 +975,130 @@ export default function Home() {
       setIsOcrProcessing(false);
       setOcrStatus("");
       alert("Feil under OCR: " + err.message);
+    }
+  };
+
+  const handleAiSkiFilesSelected = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result;
+        setAiSkiPhotos(prev => [
+          ...prev,
+          {
+            id: 'photo-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+            name: file.name,
+            dataUrl: dataUrl,
+            mimeType: file.type || 'image/jpeg',
+            label: prev.length === 0 ? 'Tupp / Merke' : (prev.length === 1 ? 'Bakski / Modell' : 'Etikett / Måledata')
+          }
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
+  };
+
+  const handleLoadKastleSamplePhotos = () => {
+    setAiSkiPhotos([
+      {
+        id: 'sample-1',
+        name: 'Tupp & Merke (Kästle)',
+        dataUrl: '/assets/aistudio/PXL_20261108_122311338_9829bbe9.jpg',
+        serverSamplePath: '/assets/aistudio/PXL_20261108_122311338_9829bbe9.jpg',
+        label: 'Tupp & Merke'
+      },
+      {
+        id: 'sample-2',
+        name: 'Bakski (206 Classic Cold RX 10 2.0)',
+        dataUrl: '/assets/aistudio/PXL_20261108_122314676_58c3c4bc.jpg',
+        serverSamplePath: '/assets/aistudio/PXL_20261108_122314676_58c3c4bc.jpg',
+        label: 'Bakski & Lengde'
+      },
+      {
+        id: 'sample-3',
+        name: 'Fabrikketikett (CW1, 65-85kg, 1.29mm)',
+        dataUrl: '/assets/aistudio/PXL_20261108_122159224.MP_e372a19b.jpg',
+        serverSamplePath: '/assets/aistudio/PXL_20261108_122159224.MP_e372a19b.jpg',
+        label: 'Spesifikasjoner & Slip'
+      }
+    ]);
+  };
+
+  const handleRemoveAiSkiPhoto = (photoId) => {
+    setAiSkiPhotos(prev => prev.filter(p => p.id !== photoId));
+  };
+
+  const handleRunAiSkiScan = async () => {
+    if (aiSkiPhotos.length === 0) {
+      alert("Vennligst ta eller last opp minst ett bilde av skien først (f.eks. tupp, bakski eller etikett).");
+      return;
+    }
+
+    setAiSkiScanning(true);
+    setAiSkiScanStatus("Sender bilder til Gemini multimodal AI...");
+
+    try {
+      const payloadImages = [];
+      const payloadSamplePaths = [];
+
+      aiSkiPhotos.forEach(p => {
+        if (p.serverSamplePath) {
+          payloadSamplePaths.push(p.serverSamplePath);
+        } else if (p.dataUrl && p.dataUrl.startsWith('data:image')) {
+          payloadImages.push({
+            mimeType: p.mimeType || 'image/jpeg',
+            data: p.dataUrl
+          });
+        }
+      });
+
+      setAiSkiScanStatus("Gemini AI analyserer tupp, modell, lengde, etikett og slip...");
+
+      const res = await fetch('/api/ai/scan-ski', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          images: payloadImages,
+          samplePaths: payloadSamplePaths
+        })
+      });
+
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || "AI-skanningen feilet.");
+      }
+
+      const data = result.data;
+      setAiSkiScanResult(data);
+
+      // Fyll automatisk inn i newSkiData
+      setNewSkiData(prev => ({
+        ...prev,
+        brand: data.brand || prev.brand,
+        model: data.model || prev.model,
+        type: data.type || prev.type,
+        camberType: data.camberType || prev.camberType,
+        lengthCm: data.lengthCm || prev.lengthCm,
+        weightKgMin: data.weightKgMin || prev.weightKgMin,
+        weightKgMax: data.weightKgMax || prev.weightKgMax,
+        grind: data.grind || prev.grind,
+        hbw: data.hbw !== undefined && data.hbw !== null ? String(data.hbw) : prev.hbw,
+        fbw: data.fbw !== undefined && data.fbw !== null ? String(data.fbw) : prev.fbw,
+        pocketFrontCm: data.pocketFrontCm !== undefined && data.pocketFrontCm !== null ? String(data.pocketFrontCm) : prev.pocketFrontCm,
+        pocketRearCm: data.pocketRearCm !== undefined && data.pocketRearCm !== null ? String(data.pocketRearCm) : prev.pocketRearCm,
+        tag: data.tag || prev.tag,
+        notes: data.notes || prev.notes
+      }));
+
+      setAiSkiScanStatus("✓ AI-analyse fullført!");
+    } catch (err) {
+      alert("Feil under AI-skanning: " + err.message);
+    } finally {
+      setAiSkiScanning(false);
     }
   };
 
@@ -3242,12 +3374,33 @@ export default function Home() {
 
         {/* 3. REGISTRER SKI */}
         {view === "manual" && (
-          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '22px', padding: '30px', maxWidth: '680px', margin: '0 auto' }}>
+          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '22px', padding: '30px', maxWidth: '720px', margin: '0 auto' }}>
             <h2 style={{ fontSize: '22px', margin: '0 0 6px 0', fontWeight: '800' }}>➕ Registrer skipar</h2>
             <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#64748b' }}>
-              Last opp Skiselector-bilde eller skann etikett med kamera:
+              Bruk AI-skanning med kamera (tupp, bak og etikett), last opp Skiselector-rapport, eller fyll ut manuelt:
             </p>
 
+            {/* SKJULT FIL-INPUT FOR AI BILDER (GALLERI / FLERE FILER) */}
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              ref={aiSkiFileInputRef}
+              style={{ display: 'none' }}
+              onChange={handleAiSkiFilesSelected}
+            />
+
+            {/* SKJULT KAMERA-INPUT FOR DIREKTE BILDETAKING PÅ MOBIL */}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              ref={aiSkiCameraInputRef}
+              style={{ display: 'none' }}
+              onChange={handleAiSkiFilesSelected}
+            />
+
+            {/* SKJULT FIL-INPUT FOR SKISELECTOR */}
             <input
               type="file"
               accept="image/*"
@@ -3256,23 +3409,158 @@ export default function Home() {
               onChange={handleScanSkiselectorForNewSki}
             />
 
+            {/* HOVEDSEKSJON: AI SKISKANNING (TUPP + BAK + ETIKETT) */}
+            <div style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)', border: '2px solid #0284c7', borderRadius: '20px', padding: '20px', marginBottom: '20px', boxShadow: '0 4px 14px rgba(2, 132, 199, 0.08)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '28px' }}>📸</span>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>
+                        AI Skiskanning (Tupp + Bak + Etikett)
+                      </h3>
+                      <span style={{ background: '#7c3aed', color: '#ffffff', fontSize: '10px', fontWeight: '900', padding: '2px 8px', borderRadius: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Gemini 3.8 Flash
+                      </span>
+                    </div>
+                    <p style={{ margin: '3px 0 0 0', fontSize: '13px', color: '#64748b' }}>
+                      Ta bilder av tupp (merke), bakski (modell og lengde) og fabrikketikett (måledata og slip).
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleLoadKastleSamplePhotos}
+                  style={{ background: '#ffffff', border: '1.5px solid #38bdf8', color: '#0369a1', padding: '8px 12px', borderRadius: '10px', fontSize: '12px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 2px 4px rgba(0,0,0,0.03)' }}
+                >
+                  <span>✨</span>
+                  <span>Test med dine Kästle-eksempler</span>
+                </button>
+              </div>
+
+              {/* BILDER I GALLERIET */}
+              {aiSkiPhotos.length > 0 ? (
+                <div style={{ marginTop: '14px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px', marginBottom: '14px' }}>
+                    {aiSkiPhotos.map((photo) => (
+                      <div key={photo.id} style={{ position: 'relative', background: '#ffffff', border: '1.5px solid #cbd5e1', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}>
+                        <div style={{ height: '110px', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                          <img
+                            src={photo.dataUrl}
+                            alt={photo.name}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        </div>
+                        <div style={{ padding: '6px 8px', fontSize: '11px', fontWeight: '700', color: '#334155', background: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {photo.label || photo.name}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAiSkiPhoto(photo.id)}
+                          style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(15,23,42,0.75)', color: '#ffffff', border: 'none', borderRadius: '50%', width: '22px', height: '22px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          title="Fjern bilde"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+
+                    {/* LEGG TIL FLERE BILDER */}
+                    <button
+                      type="button"
+                      onClick={() => aiSkiFileInputRef.current?.click()}
+                      style={{ height: '140px', border: '2px dashed #94a3b8', borderRadius: '12px', background: '#ffffff', color: '#64748b', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '700' }}
+                    >
+                      <span style={{ fontSize: '24px' }}>➕</span>
+                      <span>Legg til bilde</span>
+                    </button>
+                  </div>
+
+                  {/* START ANALYSE KNAPP */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      disabled={aiSkiScanning}
+                      onClick={handleRunAiSkiScan}
+                      style={{ background: '#0284c7', color: '#ffffff', border: 'none', padding: '12px 22px', borderRadius: '12px', fontWeight: '800', fontSize: '14px', cursor: aiSkiScanning ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)' }}
+                    >
+                      <span>{aiSkiScanning ? '⏳' : '🚀'}</span>
+                      <span>{aiSkiScanning ? 'Analyserer med Gemini AI...' : `Start AI-analyse (${aiSkiPhotos.length} bilde${aiSkiPhotos.length > 1 ? 'r' : ''})`}</span>
+                    </button>
+                    {aiSkiScanStatus && (
+                      <span style={{ fontSize: '13px', fontWeight: '700', color: aiSkiScanStatus.includes('✓') ? '#15803d' : '#0284c7' }}>
+                        {aiSkiScanStatus}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ marginTop: '12px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => aiSkiCameraInputRef.current?.click()}
+                    style={{ flex: 1, minWidth: '180px', border: '2px solid #0284c7', borderRadius: '12px', padding: '14px', background: '#eff6ff', color: '#0284c7', fontWeight: '800', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                  >
+                    <span>📷</span>
+                    <span>Knips bilde med mobilkamera</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => aiSkiFileInputRef.current?.click()}
+                    style={{ flex: 1, minWidth: '180px', border: '1.5px solid #cbd5e1', borderRadius: '12px', padding: '14px', background: '#ffffff', color: '#334155', fontWeight: '800', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                  >
+                    <span>📁</span>
+                    <span>Velg bilder fra enhet / galleri</span>
+                  </button>
+                </div>
+              )}
+
+              {/* AI RESULTATKORT */}
+              {aiSkiScanResult && (
+                <div style={{ marginTop: '16px', background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: '14px', padding: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '20px' }}>🎉</span>
+                    <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#166534' }}>
+                      AI identifiserte: {aiSkiScanResult.brand} {aiSkiScanResult.model} ({aiSkiScanResult.lengthCm} cm)
+                    </h4>
+                  </div>
+                  <p style={{ margin: '0 0 10px 0', fontSize: '13px', color: '#15803d', lineHeight: 1.4 }}>
+                    {aiSkiScanResult.analysisSummary}
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', fontSize: '12px', background: '#ffffff', padding: '10px', borderRadius: '10px', border: '1px solid #bbf7d0' }}>
+                    <div>HBW (Glid): <strong style={{ color: '#0284c7' }}>{aiSkiScanResult.hbw} mm</strong></div>
+                    <div>FBW (Feste): <strong style={{ color: '#ea580c' }}>{aiSkiScanResult.fbw} mm</strong></div>
+                    <div>Løpervekt: <strong>{aiSkiScanResult.weightKgMin}-{aiSkiScanResult.weightKgMax} kg</strong></div>
+                    <div>Slip: <strong style={{ color: '#166534' }}>{aiSkiScanResult.grind || 'Standard'}</strong></div>
+                    <div>Lomme: <strong>+{aiSkiScanResult.pocketFrontCm} / -{aiSkiScanResult.pocketRearCm} cm</strong></div>
+                    {aiSkiScanResult.stiffnessKg && <div>Stivhet: <strong>{aiSkiScanResult.stiffnessKg} kg</strong></div>}
+                  </div>
+                  <div style={{ marginTop: '8px', fontSize: '11px', color: '#166534', fontWeight: '700' }}>
+                    ✓ Skjemaet nedenfor er automatisk oppdatert. Gjør eventuelle justeringer og trykk «✓ Lagre ski i stallen».
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* SEKUNDÆRE METODER: SKISELECTOR OG QR */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
               <button
                 type="button"
                 onClick={() => skiselectorFileInputRef.current?.click()}
-                style={{ border: '2px dashed #0284c7', borderRadius: '14px', padding: '16px', textAlign: 'center', cursor: 'pointer', background: '#f0f9ff', color: '#0284c7', fontWeight: '800', fontSize: '14px' }}
+                style={{ border: '1.5px solid #cbd5e1', borderRadius: '12px', padding: '12px', textAlign: 'center', cursor: 'pointer', background: '#f8fafc', color: '#334155', fontWeight: '700', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
               >
-                <div style={{ fontSize: '26px', marginBottom: '4px' }}>📊</div>
-                Last opp Skiselector-bilde
+                <span>📊</span>
+                <span>Last opp Skiselector-rapport</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => startCameraScanner("new")}
-                style={{ border: '2px dashed #059669', borderRadius: '14px', padding: '16px', textAlign: 'center', cursor: 'pointer', background: '#f0fdf4', color: '#059669', fontWeight: '800', fontSize: '14px' }}
+                style={{ border: '1.5px solid #cbd5e1', borderRadius: '12px', padding: '12px', textAlign: 'center', cursor: 'pointer', background: '#f8fafc', color: '#334155', fontWeight: '700', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
               >
-                <div style={{ fontSize: '26px', marginBottom: '4px' }}>📷</div>
-                Skann QR / Etikett med kamera
+                <span>📷</span>
+                <span>Skann QR / Strekkode</span>
               </button>
             </div>
 
