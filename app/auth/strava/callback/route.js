@@ -21,8 +21,12 @@ export async function GET(req) {
       `, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
 
-    const clientId = process.env.STRAVA_CLIENT_ID;
-    const clientSecret = process.env.STRAVA_CLIENT_SECRET;
+    const cookieHeader = req.headers.get('cookie') || '';
+    const cookieIdMatch = cookieHeader.match(/strava_client_id=([^;]+)/);
+    const cookieSecretMatch = cookieHeader.match(/strava_client_secret=([^;]+)/);
+
+    const clientId = process.env.STRAVA_CLIENT_ID || (cookieIdMatch ? cookieIdMatch[1] : null);
+    const clientSecret = process.env.STRAVA_CLIENT_SECRET || (cookieSecretMatch ? cookieSecretMatch[1] : null);
 
     if (!clientId || !clientSecret) {
       return new Response(`
@@ -30,7 +34,7 @@ export async function GET(req) {
         <html>
           <body style="font-family:system-ui;text-align:center;padding:40px;background:#f8fafc;color:#0f172a;">
             <h2>⚠️ Strava API-nøkler mangler</h2>
-            <p>Vennligst legg til STRAVA_CLIENT_ID og STRAVA_CLIENT_SECRET i miljøvariablene.</p>
+            <p style="color:#64748b;">Vennligst oppgi STRAVA_CLIENT_ID og STRAVA_CLIENT_SECRET i Vercel eller i appen.</p>
           </body>
         </html>
       `, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });

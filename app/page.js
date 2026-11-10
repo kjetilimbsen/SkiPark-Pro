@@ -387,6 +387,9 @@ export default function Home() {
   const [stravaAthlete, setStravaAthlete] = useState(null);
   const [stravaSyncing, setStravaSyncing] = useState(false);
   const [showStravaModal, setShowStravaModal] = useState(false);
+  const [showStravaConfigModal, setShowStravaConfigModal] = useState(false);
+  const [customClientId, setCustomClientId] = useState("");
+  const [customClientSecret, setCustomClientSecret] = useState("");
   const [unassignedActivities, setUnassignedActivities] = useState([]);
 
   // PWA install
@@ -403,7 +406,16 @@ export default function Home() {
   const [passportModalSki, setPassportModalSki] = useState(null);
   const [showImportPassportModal, setShowImportPassportModal] = useState(false);
   const [passportInputText, setPassportInputText] = useState("");
+  const [importSkiId, setImportSkiId] = useState("");
+  const [importPinCode, setImportPinCode] = useState("");
+  const [importLoading, setImportLoading] = useState(false);
   const [transferTargetMemberId, setTransferTargetMemberId] = useState("");
+  const [passportTransferLoading, setPassportTransferLoading] = useState(false);
+  const [passportCopiedLink, setPassportCopiedLink] = useState(false);
+  const [passportCopiedPin, setPassportCopiedPin] = useState(false);
+
+  // Redigering av eksisterende ski
+  const [editingSki, setEditingSki] = useState(null);
 
   // Kvittering
   const [viewingReceiptUrl, setViewingReceiptUrl] = useState(null);
@@ -499,6 +511,12 @@ export default function Home() {
 
     const savedStravaAthlete = localStorage.getItem("skipark_strava_athlete");
     if (savedStravaAthlete) try { setStravaAthlete(JSON.parse(savedStravaAthlete)); } catch (e) {}
+
+    const savedCId = localStorage.getItem("skipark_strava_client_id");
+    if (savedCId) setCustomClientId(savedCId);
+
+    const savedCSecret = localStorage.getItem("skipark_strava_client_secret");
+    if (savedCSecret) setCustomClientSecret(savedCSecret);
 
 
     const handleOAuthMessage = (event) => {
@@ -971,33 +989,172 @@ export default function Home() {
     setPassportModalSki(null);
   };
 
-  const handleShareOrCopyPassport = async (ski) => {
-    const passportString = JSON.stringify(ski, null, 2);
+  const openPassportModal = async (ski) => {
+    setPassportModalSki(ski);
+    setTransferTargetMemberId(ski.memberId || "");
+    setPassportCopiedLink(false);
+    setPassportCopiedPin(false);
 
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `Digitalt Skikort: ${ski.brand} ${ski.model}`,
-          text: passportString
-        });
-        return;
-      } catch (err) {}
+    // Synkroniser skien til delt server-lagring slik at delingslenken fungerer direkte
+    try {
+      const res = await fetch(`/api/ski/${encodeURIComponent(ski.id)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ski })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.ski) {
+          setPassportModalSki(prev => (prev && prev.id === ski.id) ? {
+            ...prev,
+            transferActive: Boolean(data.transferActive),
+            transferCode: data.transferCode || prev.transferCode
+          } : prev);
+        }
+      }
+    } catch (err) {
+      // tolerer feil ved frakoblet modus
+    }
+  };
+
+  const handleToggleTransfer = async (active) => {
+    if (!passportModalSki) return;
+    setPassportTransferLoading(true);
+    try {
+      const res = await fetch(`/api/ski/${encodeURIComponent(passportModalSki.id)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ski: passportModalSki,
+          transferActive: active
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        const updatedSki = {
+          ...passportModalSki,
+          transferActive: data.transferActive,
+          transferCode: data.transferCode
+        };
+        setPassportModalSki(updatedSki);
+
+        const updatedSkis = skis.map(s => s.id === passportModalSki.id ? {
+          ...s,
+          transferActive: data.transferActive,
+          transferCode: data.transferCode
+        } : s);
+        persistSkis(updatedSkis);
+      } else {
+        alert("Kunne ikke endre overføringsstatus: " + (data.error || "Ukjent feil"));
+      }
+    } catch (err) {
+      alert("Feil under overføringstilkobling: " + err.message);
+    } finally {
+      setPassportTransferLoading(false);
+    }
+  };
+
+  const handleCopyShareLink = (ski) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const shareUrl = `${origin}/ski/${ski.id}`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(shareUrl);
+      setPassportCopiedLink(true);
+      setTimeout(() => setPassportCopiedLink(false), 2500);
+    } else {
+      alert("Delingslenke: " + shareUrl);
+    }
+  };
+
+  const handleCopyTransferPin = (code) => {
+    if (!code) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(String(code));
+      setPassportCopiedPin(true);
+      setTimeout(() => setPassportCopiedPin(false), 2500);
+    }
+  };
+
+  const handleSaveEditedSki = (e) => {
+    e.preventDefault();
+    if (!editingSki) return;
+    const cleanNumber = (editingSki.skiNumber || "").trim();
+    const cleanSki = {
+      ...editingSki,
+      skiNumber: cleanNumber.startsWith("#") ? cleanNumber : (cleanNumber ? `#${cleanNumber}` : "#01"),
+      lengthCm: parseInt(editingSki.lengthCm) || 195,
+      weightKgMin: parseFloat(editingSki.weightKgMin) || 60,
+      weightKgMax: parseFloat(editingSki.weightKgMax) || 80,
+      hbw: editingSki.hbw ? parseFloat(editingSki.hbw) : null,
+      fbw: editingSki.fbw ? parseFloat(editingSki.fbw) : null,
+      pocketFrontCm: editingSki.pocketFrontCm ? parseFloat(editingSki.pocketFrontCm) : null,
+      pocketRearCm: editingSki.pocketRearCm ? parseFloat(editingSki.pocketRearCm) : null,
+      updatedAt: new Date().toISOString()
+    };
+
+    const updated = skis.map(s => s.id === cleanSki.id ? cleanSki : s);
+    persistSkis(updated);
+
+    // Oppdater også på server for delingslenken
+    fetch(`/api/ski/${encodeURIComponent(cleanSki.id)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ski: cleanSki })
+    }).catch(() => {});
+
+    setEditingSki(null);
+  };
+
+  const handleClaimSkiDirect = async (e) => {
+    e.preventDefault();
+    let cleanId = importSkiId.trim();
+    if (!cleanId) {
+      return alert("Oppgi Ski-ID eller delingslenke.");
+    }
+    if (cleanId.includes('/ski/')) {
+      const parts = cleanId.split('/ski/');
+      cleanId = parts[parts.length - 1].split('?')[0].replace(/\/$/, '');
+    }
+    const cleanPin = importPinCode.trim();
+    if (!cleanPin) {
+      return alert("Oppgi den 4-sifrede overføringskoden fra selger.");
     }
 
+    setImportLoading(true);
     try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(passportString);
-      } else {
-        const textarea = document.createElement("textarea");
-        textarea.value = passportString;
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textarea);
+      const res = await fetch('/api/ski/transfer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ skiId: cleanId, code: cleanPin })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Overføringen feilet. Sjekk koden.");
       }
-      alert("✓ Skikort-koden er kopiert! Send den til ny eier på SMS/e-post.");
-    } catch (e) {
-      alert("Kopier koden i tekstfeltet manuelt.");
+
+      const importedSki = {
+        ...data.ski,
+        id: data.ski.id || ("ski-" + Date.now()),
+        memberId: activeMemberId,
+        isDemo: false,
+        transferActive: false,
+        transferCode: null,
+        maintenanceLog: [
+          { date: new Date().toISOString().split("T")[0], title: "Eierskifte: Overtatt via SkiPark Pro digitalt skikort", type: "Overtakelse" },
+          ...(data.ski.maintenanceLog || [])
+        ]
+      };
+
+      const updatedSkis = [importedSki, ...skis.filter(s => s.id !== importedSki.id)];
+      persistSkis(updatedSkis);
+      setShowImportPassportModal(false);
+      setImportSkiId("");
+      setImportPinCode("");
+      alert(`🎉 Gratulerer! ${importedSki.brand} ${importedSki.model} (${importedSki.skiNumber || ''}) er nå lagt til i din stall.`);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setImportLoading(false);
     }
   };
 
@@ -1066,18 +1223,40 @@ export default function Home() {
     }
   };
 
-  const handleConnectStrava = async () => {
+  const handleConnectStrava = async (overrideId, overrideSecret) => {
     try {
-      const res = await fetch(`/api/strava/auth-url?origin=${encodeURIComponent(window.location.origin)}`);
+      const cId = overrideId || customClientId || (typeof window !== 'undefined' ? localStorage.getItem("skipark_strava_client_id") : "") || "";
+      const cSec = overrideSecret || customClientSecret || (typeof window !== 'undefined' ? localStorage.getItem("skipark_strava_client_secret") : "") || "";
+
+      let url = `/api/strava/auth-url?origin=${encodeURIComponent(window.location.origin)}`;
+      if (cId && cSec) {
+        url += `&client_id=${encodeURIComponent(cId.trim())}&client_secret=${encodeURIComponent(cSec.trim())}`;
+      }
+
+      const res = await fetch(url);
       const data = await res.json();
+
       if (!data.configured) {
-        alert("Strava-integrasjonen konfigureres av administrator. Du kan teste funksjonen med prøvedata i mellomtiden.");
+        setShowStravaConfigModal(true);
         return;
       }
+
       window.open(data.url, 'strava_oauth', 'width=600,height=750,left=200,top=100');
     } catch (err) {
       alert("Klarte ikke å åpne Strava: " + err.message);
     }
+  };
+
+  const handleSaveStravaCredentials = (e) => {
+    e.preventDefault();
+    if (!customClientId.trim() || !customClientSecret.trim()) {
+      alert("Vennligst fyll ut både Client ID og Client Secret fra Strava.");
+      return;
+    }
+    localStorage.setItem("skipark_strava_client_id", customClientId.trim());
+    localStorage.setItem("skipark_strava_client_secret", customClientSecret.trim());
+    setShowStravaConfigModal(false);
+    handleConnectStrava(customClientId.trim(), customClientSecret.trim());
   };
 
   const handleDisconnectStrava = () => {
@@ -1414,7 +1593,14 @@ export default function Home() {
     if (filter === "Skate" && s.type !== "Skate") return false;
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
-    return (s.brand || "").toLowerCase().includes(q) || (s.model || "").toLowerCase().includes(q) || (s.tag || "").toLowerCase().includes(q);
+    return (
+      (s.brand || "").toLowerCase().includes(q) ||
+      (s.model || "").toLowerCase().includes(q) ||
+      (s.tag || "").toLowerCase().includes(q) ||
+      (s.skiNumber || "").toLowerCase().includes(q) ||
+      (s.notes || "").toLowerCase().includes(q) ||
+      (s.grind || "").toLowerCase().includes(q)
+    );
   });
 
   const sortedSkis = [...searchedSkis].sort((a, b) => {
@@ -1761,6 +1947,84 @@ export default function Home() {
           </div>
         )}
 
+        {/* MODAL FOR Å OPPGI STRAVA CLIENT ID / SECRET (DERSOM IKKE SATT I VERCEL) */}
+        {showStravaConfigModal && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.65)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+            <div style={{ background: '#ffffff', borderRadius: '22px', padding: '28px', maxWidth: '480px', width: '100%', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', border: '1.5px solid #fed7aa' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#ffedd5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                    🚴
+                  </div>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
+                    Aktiver Strava-kobling
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowStravaConfigModal(false)}
+                  style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#475569', lineHeight: 1.5 }}>
+                For at Strava skal tillate innlogging, må appen ha din Strava <strong>Client ID</strong> og <strong>Client Secret</strong>. Disse opprettes gratis på <a href="https://www.strava.com/settings/api" target="_blank" rel="noreferrer" style={{ color: '#fc4c02', fontWeight: 'bold', textDecoration: 'underline' }}>strava.com/settings/api</a>.
+              </p>
+
+              <form onSubmit={handleSaveStravaCredentials} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '800', color: '#334155', marginBottom: '4px' }}>
+                    Strava Client ID
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="F.eks. 148291"
+                    value={customClientId}
+                    onChange={(e) => setCustomClientId(e.target.value)}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '14px', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '800', color: '#334155', marginBottom: '4px' }}>
+                    Strava Client Secret
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="Din hemmelige nøkkel fra Strava"
+                    value={customClientSecret}
+                    onChange={(e) => setCustomClientSecret(e.target.value)}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '14px', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div style={{ background: '#f8fafc', padding: '10px 12px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '12px', color: '#64748b' }}>
+                  <strong>Tips:</strong> På strava.com må du sette <em>Authorization Callback Domain</em> til <code style={{ color: '#fc4c02', fontWeight: 'bold' }}>{typeof window !== 'undefined' ? window.location.host : 'ski-park-pro.vercel.app'}</code>.
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                  <button
+                    type="submit"
+                    style={{ flex: 1, background: '#fc4c02', color: '#ffffff', border: 'none', padding: '12px', borderRadius: '12px', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}
+                  >
+                    Lagre & koble til Strava →
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowStravaConfigModal(false)}
+                    style={{ background: '#f1f5f9', color: '#475569', border: 'none', padding: '12px 18px', borderRadius: '12px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}
+                  >
+                    Avbryt
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {/* UFORDELTE STRAVA ØKTER */}
         {unassignedActivities.length > 0 && (
           <div style={{ background: '#ffffff', border: '2px solid #f59e0b', borderRadius: '16px', padding: '18px 22px', marginTop: '16px' }}>
@@ -1786,27 +2050,144 @@ export default function Home() {
           </div>
         )}
 
-        {/* MODAL FOR DIGITALT SKIKORT / EIERSKIFTE */}
+        {/* MODAL FOR DIGITALT SKIKORT & SIKKER OVERFØRING */}
         {passportModalSki && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-            <div style={{ background: '#ffffff', border: '2px solid #7c3aed', borderRadius: '24px', padding: '26px', maxWidth: '540px', width: '100%' }}>
+            <div style={{ background: '#ffffff', border: '2px solid #7c3aed', borderRadius: '24px', padding: '26px', maxWidth: '580px', width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 40px rgba(0,0,0,0.25)' }}>
+              
+              {/* HEADER */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '800', color: '#5b21b6' }}>Digitalt Skikort & Eierskifte</h3>
-                <button onClick={() => setPassportModalSki(null)} style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', fontWeight: 'bold' }}>✕</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '24px' }}>🎿</span>
+                  <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '900', color: '#5b21b6' }}>
+                    Digitalt Skikort & Eierskifte
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setPassportModalSki(null)}
+                  style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', fontWeight: 'bold' }}
+                >
+                  ✕
+                </button>
               </div>
 
-              <div style={{ background: '#f5f3ff', padding: '12px 16px', borderRadius: '12px', marginBottom: '16px', border: '1px solid #ddd6fe' }}>
-                <div style={{ fontWeight: '800', color: '#5b21b6' }}>{passportModalSki.brand} {passportModalSki.model}</div>
-                <div style={{ fontSize: '13px', color: '#6d28d9' }}>{passportModalSki.lengthCm} cm • HBW: {passportModalSki.hbw ? `${passportModalSki.hbw} mm` : '-'} • Vekt: {passportModalSki.weightKgMin}-{passportModalSki.weightKgMax} kg</div>
+              {/* SKI INFO BADGE */}
+              <div style={{ background: '#f5f3ff', padding: '14px 18px', borderRadius: '14px', marginBottom: '18px', border: '1px solid #ddd6fe', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <span style={{ background: '#0f172a', color: '#38bdf8', padding: '2px 8px', borderRadius: '6px', fontWeight: '900', fontSize: '13px' }}>
+                      {passportModalSki.skiNumber || '#01'}
+                    </span>
+                    <strong style={{ fontSize: '17px', color: '#5b21b6' }}>{passportModalSki.brand} {passportModalSki.model}</strong>
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#6d28d9' }}>
+                    {passportModalSki.type} • {passportModalSki.lengthCm} cm • HBW: {passportModalSki.hbw ? `${passportModalSki.hbw} mm` : '-'} • Slip: {passportModalSki.grind || 'Standard'}
+                  </div>
+                </div>
+                <div style={{ background: '#ffffff', padding: '6px 12px', borderRadius: '10px', border: '1px solid #e9d5ff', textAlign: 'right' }}>
+                  <div style={{ fontSize: '10px', fontWeight: '800', color: '#6d28d9', textTransform: 'uppercase' }}>Løpervekt</div>
+                  <div style={{ fontSize: '14px', fontWeight: '900', color: '#5b21b6' }}>{passportModalSki.weightKgMin}-{passportModalSki.weightKgMax} kg</div>
+                </div>
               </div>
 
-              <div style={{ marginBottom: '16px', background: '#f8fafc', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                <label style={{ fontSize: '12px', fontWeight: '800', display: 'block', marginBottom: '6px' }}>1. OVERFØR INTERNT I FAMILIEN:</label>
+              {/* SEKSJON 1: OFFENTLIG DELINGSLENKE (FINN.NO) */}
+              <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '16px', border: '1.5px solid #e2e8f0', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '900', color: '#0f172a', marginBottom: '6px' }}>
+                  <span>🔗</span>
+                  <span>1. OFFENTLIG DELINGSLENKE (F.EKS. FINN.NO)</span>
+                </div>
+                <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#64748b', lineHeight: 1.4 }}>
+                  Lenken er åpen og kan leses uten innlogging. Viser fullstendige mål, Skiselector spennkurve, slip og notater.
+                </p>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <input
+                    type="text"
+                    readOnly
+                    value={typeof window !== 'undefined' ? `${window.location.origin}/ski/${passportModalSki.id}` : `/ski/${passportModalSki.id}`}
+                    style={{ flex: 1, minWidth: '220px', background: '#ffffff', border: '1.5px solid #cbd5e1', borderRadius: '10px', padding: '8px 12px', fontSize: '12px', color: '#334155', fontWeight: '600' }}
+                  />
+                  <button
+                    onClick={() => handleCopyShareLink(passportModalSki)}
+                    style={{ background: passportCopiedLink ? '#dcfce7' : '#0284c7', color: passportCopiedLink ? '#15803d' : '#ffffff', border: 'none', padding: '8px 14px', borderRadius: '10px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    {passportCopiedLink ? '✓ Kopiert!' : '📋 Kopier lenke'}
+                  </button>
+                  <a
+                    href={`/ski/${passportModalSki.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ background: '#f1f5f9', color: '#334155', textDecoration: 'none', padding: '8px 12px', borderRadius: '10px', fontWeight: '800', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid #cbd5e1' }}
+                  >
+                    <span>👁️</span>
+                    <span>Åpne skikort</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* SEKSJON 2: SIKKER OVERFØRING AV EIERSKAP MED PIN-KODE */}
+              <div style={{ background: passportModalSki.transferActive ? '#f0fdf4' : '#fafafa', padding: '16px', borderRadius: '16px', border: '1.5px solid ' + (passportModalSki.transferActive ? '#86efac' : '#e2e8f0'), marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '900', color: passportModalSki.transferActive ? '#166534' : '#0f172a' }}>
+                    <span>{passportModalSki.transferActive ? '🎉' : '🔒'}</span>
+                    <span>2. SIKKER OVERFØRING AV EIERSKAP</span>
+                  </div>
+                  <span style={{ fontSize: '11px', fontWeight: '800', padding: '3px 8px', borderRadius: '6px', background: passportModalSki.transferActive ? '#bbf7d0' : '#e2e8f0', color: passportModalSki.transferActive ? '#166534' : '#64748b' }}>
+                    {passportModalSki.transferActive ? 'AKTIV OVERFØRING' : 'LÅST / PRIVAT'}
+                  </span>
+                </div>
+
+                <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: passportModalSki.transferActive ? '#15803d' : '#64748b', lineHeight: 1.4 }}>
+                  {passportModalSki.transferActive
+                    ? 'Overføring er nå aktivert! Gi den 4-sifrede koden under til kjøper. Kjøper åpner delingslenken, trykker «Overta / Importer ski», taster koden og skien flyttes automatisk.'
+                    : 'Skien kan IKKE importeres av tilfeldige som har lenken. Du må aktivere overføring for å generere en midlertidig 4-sifret kode som du gir til kjøper.'}
+                </p>
+
+                {passportModalSki.transferActive ? (
+                  <div style={{ background: '#ffffff', border: '2px dashed #86efac', borderRadius: '12px', padding: '14px', textAlign: 'center', marginBottom: '10px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: '800', color: '#166534', textTransform: 'uppercase', marginBottom: '4px' }}>
+                      Midlertidig overføringskode (PIN for kjøper)
+                    </div>
+                    <div style={{ fontSize: '32px', fontWeight: '900', letterSpacing: '0.25em', color: '#15803d', fontFamily: 'monospace' }}>
+                      {passportModalSki.transferCode || '4829'}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '10px' }}>
+                      <button
+                        onClick={() => handleCopyTransferPin(passportModalSki.transferCode || '4829')}
+                        style={{ background: passportCopiedPin ? '#dcfce7' : '#16a34a', color: passportCopiedPin ? '#15803d' : '#ffffff', border: 'none', padding: '7px 14px', borderRadius: '8px', fontWeight: '800', fontSize: '12px', cursor: 'pointer' }}
+                      >
+                        {passportCopiedPin ? '✓ PIN kopiert!' : '📋 Kopier PIN'}
+                      </button>
+                      <button
+                        disabled={passportTransferLoading}
+                        onClick={() => handleToggleTransfer(false)}
+                        style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', padding: '7px 14px', borderRadius: '8px', fontWeight: '800', fontSize: '12px', cursor: 'pointer' }}
+                      >
+                        🛑 Deaktiver overføring
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    disabled={passportTransferLoading}
+                    onClick={() => handleToggleTransfer(true)}
+                    style={{ background: '#16a34a', color: '#ffffff', border: 'none', padding: '10px 18px', borderRadius: '10px', fontWeight: '800', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <span>🔑</span>
+                    <span>{passportTransferLoading ? 'Aktiverer...' : 'Aktiver overføring & generer 4-sifret kode'}</span>
+                  </button>
+                )}
+              </div>
+
+              {/* SEKSJON 3: INTERN OVERFØRING I FAMILIEN */}
+              <div style={{ marginBottom: '16px', background: '#f8fafc', padding: '14px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
+                <label style={{ fontSize: '12px', fontWeight: '900', display: 'block', marginBottom: '6px', color: '#0f172a' }}>
+                  👨‍👩‍👧‍👦 3. OVERFØR INTERNT I FAMILIEN:
+                </label>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <select
                     value={transferTargetMemberId}
                     onChange={(e) => setTransferTargetMemberId(e.target.value)}
-                    style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}
+                    style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #cbd5e1', fontWeight: 'bold', fontSize: '13px' }}
                   >
                     <option value="">Velg familiemedlem...</option>
                     {members.map(m => (
@@ -1814,58 +2195,329 @@ export default function Home() {
                     ))}
                     <option value="all">Fellespar / Alle</option>
                   </select>
-                  <button onClick={handleExecuteFamilyTransfer} style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  <button onClick={handleExecuteFamilyTransfer} style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>
                     Overfør
                   </button>
                 </div>
               </div>
 
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: '800', display: 'block', marginBottom: '6px' }}>2. DEL ELLER SELG TIL NY EIER:</label>
-                <textarea
-                  readOnly
-                  value={JSON.stringify(passportModalSki, null, 2)}
-                  rows="5"
-                  style={{ width: '100%', background: '#f8fafc', border: '1.5px solid #cbd5e1', borderRadius: '10px', padding: '10px', fontSize: '11px', fontFamily: 'monospace', boxSizing: 'border-box' }}
-                />
-                <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
-                  <button onClick={() => handleShareOrCopyPassport(passportModalSki)} style={{ flex: 1, background: '#7c3aed', color: '#ffffff', border: 'none', padding: '12px', borderRadius: '10px', fontWeight: '800', cursor: 'pointer' }}>
-                    📲 Del / Send skikort
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (window.confirm("Er paret solgt og skal slettes fra din egen stall?")) {
-                        handleDeleteSki(passportModalSki.id, `${passportModalSki.brand} ${passportModalSki.model}`);
-                        setPassportModalSki(null);
-                      }
-                    }}
-                    style={{ background: '#ffffff', color: '#dc2626', border: '1px solid #fecaca', padding: '12px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer' }}
-                  >
-                    🗑️ Slett fra min stall
-                  </button>
-                </div>
+              {/* SLETT FRA STALL */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '6px', borderTop: '1px solid #f1f5f9' }}>
+                <button
+                  onClick={() => {
+                    if (window.confirm("Er paret solgt og skal slettes fra din egen stall?")) {
+                      handleDeleteSki(passportModalSki.id, `${passportModalSki.brand} ${passportModalSki.model}`);
+                      setPassportModalSki(null);
+                    }
+                  }}
+                  style={{ background: 'none', color: '#dc2626', border: 'none', fontSize: '12px', fontWeight: '700', cursor: 'pointer', padding: '6px 10px' }}
+                >
+                  🗑️ Slett fra min stall
+                </button>
               </div>
+
             </div>
           </div>
         )}
 
-        {/* MODAL FOR IMPORT AV SKIKORT */}
+        {/* MODAL FOR MOTTAK / IMPORT AV SKI */}
         {showImportPassportModal && (
-          <div style={{ background: '#ffffff', border: '2px solid #059669', borderRadius: '20px', padding: '24px', marginTop: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#065f46' }}>📥 Motta ski via Digitalt Skikort</h3>
-              <button onClick={() => setShowImportPassportModal(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer' }}>✕</button>
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.65)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+            <div style={{ background: '#ffffff', borderRadius: '24px', padding: '28px', maxWidth: '480px', width: '100%', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', border: '1.5px solid #a7f3d0' }}>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '24px' }}>📥</span>
+                  <h3 style={{ margin: 0, fontSize: '19px', fontWeight: '900', color: '#065f46' }}>
+                    Motta ski i SkiPark Pro
+                  </h3>
+                </div>
+                <button onClick={() => setShowImportPassportModal(false)} style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', width: '32px', height: '32px', fontSize: '15px', cursor: 'pointer' }}>✕</button>
+              </div>
+
+              <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#475569', lineHeight: 1.5 }}>
+                Tast inn <strong>Ski-ID / delingslenke</strong> og den <strong>4-sifrede overføringskoden</strong> du har fått fra selger:
+              </p>
+
+              <form onSubmit={handleClaimSkiDirect} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '800', color: '#334155', marginBottom: '4px' }}>
+                    Ski-ID eller delingslenke fra selger
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="F.eks. ski-1 eller https://.../ski/ski-1"
+                    value={importSkiId}
+                    onChange={(e) => setImportSkiId(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '800', color: '#334155', marginBottom: '4px' }}>
+                    4-sifret overføringskode (PIN fra selger)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    placeholder="F.eks. 4829"
+                    value={importPinCode}
+                    onChange={(e) => setImportPinCode(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '2px solid #86efac', fontSize: '18px', fontWeight: '900', textAlign: 'center', letterSpacing: '0.15em', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                  <button
+                    type="submit"
+                    disabled={importLoading}
+                    style={{ flex: 1, background: '#16a34a', color: '#ffffff', border: 'none', padding: '12px', borderRadius: '12px', fontWeight: '800', fontSize: '14px', cursor: importLoading ? 'wait' : 'pointer' }}
+                  >
+                    {importLoading ? 'Henter ski...' : '✓ Fullfør overtakelse'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowImportPassportModal(false)}
+                    style={{ background: '#f1f5f9', color: '#475569', border: 'none', padding: '12px 16px', borderRadius: '12px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}
+                  >
+                    Avbryt
+                  </button>
+                </div>
+              </form>
+
+              {/* FALLBACK: JSON IMPORT */}
+              <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #e2e8f0' }}>
+                <details style={{ fontSize: '12px', color: '#64748b' }}>
+                  <summary style={{ cursor: 'pointer', fontWeight: '700' }}>Eller importer fra JSON-sikkerhetskopi</summary>
+                  <div style={{ marginTop: '8px' }}>
+                    <textarea
+                      placeholder="Lim inn rå JSON-skikortkode her..."
+                      value={passportInputText}
+                      onChange={(e) => setPassportInputText(e.target.value)}
+                      rows="3"
+                      style={{ width: '100%', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '8px', fontSize: '11px', fontFamily: 'monospace', boxSizing: 'border-box' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleImportPassport(passportInputText)}
+                      style={{ marginTop: '6px', background: '#0284c7', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '8px', fontWeight: '700', fontSize: '12px', cursor: 'pointer' }}
+                    >
+                      Importer JSON
+                    </button>
+                  </div>
+                </details>
+              </div>
+
             </div>
-            <textarea
-              placeholder="Lim inn skikort-koden her..."
-              value={passportInputText}
-              onChange={(e) => setPassportInputText(e.target.value)}
-              rows="5"
-              style={{ width: '100%', background: '#f0fdf4', border: '1.5px solid #a7f3d0', borderRadius: '12px', padding: '12px', fontSize: '12px', fontFamily: 'monospace', boxSizing: 'border-box' }}
-            />
-            <button onClick={() => handleImportPassport(passportInputText)} style={{ background: '#059669', color: '#ffffff', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: '800', cursor: 'pointer', marginTop: '10px' }}>
-              ✓ Importer til {currentMember.name}
-            </button>
+          </div>
+        )}
+
+        {/* MODAL FOR Å REDIGERE EKSISTERENDE SKIPAR */}
+        {editingSki && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.65)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+            <div style={{ background: '#ffffff', borderRadius: '24px', padding: '28px', maxWidth: '580px', width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 40px rgba(0,0,0,0.25)', border: '1.5px solid #0284c7' }}>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '22px' }}>✎</span>
+                  <h3 style={{ margin: 0, fontSize: '19px', fontWeight: '900', color: '#0f172a' }}>
+                    Rediger skipar: {editingSki.brand} {editingSki.model}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setEditingSki(null)}
+                  style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', width: '32px', height: '32px', fontSize: '15px', cursor: 'pointer' }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveEditedSki} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                
+                {/* PAR-NUMMER & STRAVA TAG */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '800', color: '#0f172a', marginBottom: '4px' }}>
+                      Par-nummer / ID (f.eks. #01)
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editingSki.skiNumber || ''}
+                      onChange={(e) => setEditingSki({ ...editingSki, skiNumber: e.target.value })}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '2px solid #0284c7', fontSize: '14px', fontWeight: '800', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '800', color: '#0f172a', marginBottom: '4px' }}>
+                      Strava #tag (f.eks. #speedmax)
+                    </label>
+                    <input
+                      type="text"
+                      value={editingSki.tag || ''}
+                      onChange={(e) => setEditingSki({ ...editingSki, tag: e.target.value })}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '14px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                {/* MERKE & MODELL */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '800', color: '#0f172a', marginBottom: '4px' }}>
+                      Merke
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editingSki.brand || ''}
+                      onChange={(e) => setEditingSki({ ...editingSki, brand: e.target.value })}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '14px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '800', color: '#0f172a', marginBottom: '4px' }}>
+                      Modell
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editingSki.model || ''}
+                      onChange={(e) => setEditingSki({ ...editingSki, model: e.target.value })}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '14px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                {/* STILART, LENGDE, SLIP */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '800', color: '#0f172a', marginBottom: '4px' }}>
+                      Stilart
+                    </label>
+                    <select
+                      value={editingSki.type || 'Klassisk'}
+                      onChange={(e) => setEditingSki({ ...editingSki, type: e.target.value })}
+                      style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '13px' }}
+                    >
+                      <option>Klassisk</option>
+                      <option>Skate</option>
+                      <option>Felleski</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '800', color: '#0f172a', marginBottom: '4px' }}>
+                      Lengde (cm)
+                    </label>
+                    <input
+                      type="number"
+                      value={editingSki.lengthCm || 195}
+                      onChange={(e) => setEditingSki({ ...editingSki, lengthCm: e.target.value })}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '800', color: '#0f172a', marginBottom: '4px' }}>
+                      Slip / Struktur
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="F.eks. M61 Kald"
+                      value={editingSki.grind || ''}
+                      onChange={(e) => setEditingSki({ ...editingSki, grind: e.target.value })}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                {/* VEKTOMRÅDE */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '800', color: '#0f172a', marginBottom: '4px' }}>
+                      Min vekt (kg)
+                    </label>
+                    <input
+                      type="number"
+                      value={editingSki.weightKgMin || 60}
+                      onChange={(e) => setEditingSki({ ...editingSki, weightKgMin: e.target.value })}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '800', color: '#0f172a', marginBottom: '4px' }}>
+                      Maks vekt (kg)
+                    </label>
+                    <input
+                      type="number"
+                      value={editingSki.weightKgMax || 80}
+                      onChange={(e) => setEditingSki({ ...editingSki, weightKgMax: e.target.value })}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                {/* SKISELECTOR VERDIER */}
+                <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#0284c7', marginBottom: '3px' }}>
+                      HBW (Halvvekt mm)
+                    </label>
+                    <input
+                      type="text"
+                      value={editingSki.hbw || ''}
+                      onChange={(e) => setEditingSki({ ...editingSki, hbw: e.target.value })}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#ea580c', marginBottom: '3px' }}>
+                      FBW (Fullvekt mm)
+                    </label>
+                    <input
+                      type="text"
+                      value={editingSki.fbw || ''}
+                      onChange={(e) => setEditingSki({ ...editingSki, fbw: e.target.value })}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                {/* NOTATER / MERKNADER / SLIP */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '800', color: '#0f172a', marginBottom: '4px' }}>
+                    📝 Notater, slip, merknad og bruksområde
+                  </label>
+                  <textarea
+                    rows="3"
+                    placeholder="F.eks. God birkenski. P5-1 slip som går spesielt godt i faste, kalde spor..."
+                    value={editingSki.notes || ''}
+                    onChange={(e) => setEditingSki({ ...editingSki, notes: e.target.value })}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '13px', lineHeight: 1.5, boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                {/* KNAPPER */}
+                <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                  <button
+                    type="submit"
+                    style={{ flex: 1, background: '#0284c7', color: '#ffffff', border: 'none', padding: '12px', borderRadius: '12px', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}
+                  >
+                    ✓ Lagre endringer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingSki(null)}
+                    style={{ background: '#f1f5f9', color: '#475569', border: 'none', padding: '12px 16px', borderRadius: '12px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}
+                  >
+                    Avbryt
+                  </button>
+                </div>
+
+              </form>
+
+            </div>
           </div>
         )}
 
@@ -2393,14 +3045,21 @@ export default function Home() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '18px' }}>
               {sortedSkis.map((ski) => (
                 <div key={ski.id} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '18px', boxShadow: '0 2px 6px rgba(0,0,0,0.03)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        <span style={{ fontWeight: '800', fontSize: '17px' }}>{ski.brand} {ski.model}</span>
-                        <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>{ski.skiNumber}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                        <span style={{ background: '#0f172a', color: '#38bdf8', padding: '3px 8px', borderRadius: '6px', fontWeight: '900', fontSize: '13px', letterSpacing: '0.04em' }}>
+                          {ski.skiNumber || '#01'}
+                        </span>
+                        <span style={{ fontWeight: '800', fontSize: '17px', color: '#0f172a' }}>{ski.brand} {ski.model}</span>
+                        {ski.tag && (
+                          <span style={{ fontSize: '11px', background: '#eff6ff', color: '#1d4ed8', padding: '2px 6px', borderRadius: '4px', fontWeight: '700' }}>
+                            {ski.tag}
+                          </span>
+                        )}
                       </div>
                       <p style={{ margin: '3px 0 0 0', fontSize: '13px', color: '#64748b' }}>
-                        {ski.type} • {ski.lengthCm} cm • Vekt: {ski.weightKgMin}-{ski.weightKgMax} kg
+                        {ski.type} • {ski.lengthCm} cm • Slip: <strong style={{ color: '#0f172a' }}>{ski.grind || 'Standard'}</strong> • Vekt: {ski.weightKgMin}-{ski.weightKgMax} kg
                       </p>
                     </div>
 
@@ -2418,11 +3077,18 @@ export default function Home() {
                     <span>Optimal: <strong>{ski.tempOptimalMin}°C til {ski.tempOptimalMax}°C</strong></span>
                   </div>
 
+                  {/* NOTAT / MERKNAD / SLIP */}
+                  {ski.notes && (
+                    <div style={{ fontSize: '12px', color: '#78350f', background: '#fffbeb', border: '1px solid #fde68a', padding: '6px 10px', borderRadius: '8px', marginTop: '8px', lineHeight: 1.4 }}>
+                      <strong>📝 Notat:</strong> {ski.notes}
+                    </div>
+                  )}
+
                   <div style={{ fontSize: '12px', color: ski.matchScore >= 85 ? '#15803d' : '#64748b', marginTop: '8px', background: '#f1f5f9', padding: '6px 10px', borderRadius: '8px' }}>
                     {ski.conditionSummary || 'Standard føre'}
                   </div>
 
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '12px', alignItems: 'center' }}>
                     <button
                       onClick={() => { setSelectedSkiId(ski.id); setView("detail"); }}
                       style={{ flex: 1, background: '#0284c7', border: 'none', padding: '9px', borderRadius: '10px', color: '#ffffff', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}
@@ -2430,10 +3096,19 @@ export default function Home() {
                       Vis kurve & logg →
                     </button>
                     <button
-                      onClick={() => { setPassportModalSki(ski); setTransferTargetMemberId(ski.memberId || ""); }}
-                      style={{ background: '#f5f3ff', border: '1px solid #ddd6fe', color: '#6d28d9', padding: '9px 12px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
+                      onClick={() => openPassportModal(ski)}
+                      style={{ background: '#f5f3ff', border: '1px solid #ddd6fe', color: '#6d28d9', padding: '9px 12px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                      title="Del skikort for Finn.no / Overfør ski"
                     >
-                      📤 Skikort
+                      <span>🔗</span>
+                      <span>Del skikort</span>
+                    </button>
+                    <button
+                      onClick={() => setEditingSki(ski)}
+                      style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#334155', padding: '9px 10px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
+                      title="Rediger opplysninger"
+                    >
+                      ✎
                     </button>
                   </div>
                 </div>
@@ -2471,17 +3146,47 @@ export default function Home() {
                   📷 Skann QR/Etikett
                 </button>
                 <button
-                  onClick={() => { setPassportModalSki(activeSki); setTransferTargetMemberId(activeSki.memberId || ""); }}
-                  style={{ background: '#f5f3ff', border: '1.5px solid #7c3aed', color: '#6d28d9', padding: '8px 14px', borderRadius: '10px', fontWeight: '800', cursor: 'pointer' }}
+                  onClick={() => setEditingSki(activeSki)}
+                  style={{ background: '#f1f5f9', border: '1.5px solid #cbd5e1', color: '#334155', padding: '8px 14px', borderRadius: '10px', fontWeight: '800', cursor: 'pointer' }}
                 >
-                  📤 Skikort / Eierskifte
+                  ✎ Rediger ski
+                </button>
+                <button
+                  onClick={() => openPassportModal(activeSki)}
+                  style={{ background: '#f5f3ff', border: '1.5px solid #7c3aed', color: '#6d28d9', padding: '8px 14px', borderRadius: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                >
+                  <span>🔗</span>
+                  <span>Del skikort</span>
                 </button>
               </div>
             </div>
 
             <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px' }}>
-              <h2 style={{ margin: '0 0 6px 0', fontSize: '24px', fontWeight: '800' }}>{activeSki.brand} {activeSki.model}</h2>
-              <p style={{ margin: 0, color: '#64748b' }}>{activeSki.lengthCm} cm • Målt spenn for {activeSki.weightKgMin} - {activeSki.weightKgMax} kg</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
+                <span style={{ background: '#0f172a', color: '#38bdf8', padding: '4px 10px', borderRadius: '8px', fontWeight: '900', fontSize: '15px', letterSpacing: '0.04em' }}>
+                  {activeSki.skiNumber || '#01'}
+                </span>
+                <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '900', color: '#0f172a' }}>{activeSki.brand} {activeSki.model}</h2>
+                {activeSki.tag && (
+                  <span style={{ fontSize: '12px', background: '#eff6ff', color: '#1d4ed8', padding: '3px 8px', borderRadius: '6px', fontWeight: '700' }}>
+                    {activeSki.tag}
+                  </span>
+                )}
+              </div>
+              <p style={{ margin: 0, color: '#64748b', fontSize: '14px' }}>
+                {activeSki.type} • {activeSki.lengthCm} cm • Slip: <strong style={{ color: '#0f172a' }}>{activeSki.grind || 'Standard'}</strong> • Målt spenn for {activeSki.weightKgMin} - {activeSki.weightKgMax} kg
+              </p>
+            </div>
+
+            {/* NOTATER / KOMMENTAR FRA EIER */}
+            <div style={{ background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: '18px', padding: '18px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '800', color: '#92400e', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>📝</span>
+                <span>KOMMENTAR / NOTATER / SLIP</span>
+              </div>
+              <p style={{ margin: 0, fontSize: '14px', color: '#78350f', whiteSpace: 'pre-line', lineHeight: 1.5 }}>
+                {activeSki.notes || "Ingen spesifikke notater registrert for dette paret ennå. Trykk «✎ Rediger ski» over for å legge til."}
+              </p>
             </div>
 
             <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px' }}>
@@ -2612,7 +3317,17 @@ export default function Home() {
               });
             }} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              {/* PAR-NUMMER & MERKE / MODELL */}
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: '800', color: '#0f172a' }}>Par-nummer</label>
+                  <input
+                    placeholder="#03"
+                    value={newSkiData.skiNumber}
+                    onChange={(e) => setNewSkiData({ ...newSkiData, skiNumber: e.target.value })}
+                    style={{ width: '100%', border: '2px solid #0284c7', padding: '10px', borderRadius: '10px', boxSizing: 'border-box', fontWeight: '800' }}
+                  />
+                </div>
                 <div>
                   <label style={{ fontSize: '12px', fontWeight: '700' }}>Merke</label>
                   <input value={newSkiData.brand} onChange={(e) => setNewSkiData({ ...newSkiData, brand: e.target.value })} required style={{ width: '100%', border: '1.5px solid #cbd5e1', padding: '10px', borderRadius: '10px', boxSizing: 'border-box' }} />
@@ -2623,7 +3338,8 @@ export default function Home() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+              {/* STILART, LENGDE, TAG, SLIP */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px' }}>
                 <div>
                   <label style={{ fontSize: '12px', fontWeight: '700' }}>Stilart</label>
                   <select value={newSkiData.type} onChange={(e) => setNewSkiData({ ...newSkiData, type: e.target.value })} style={{ width: '100%', border: '1.5px solid #cbd5e1', padding: '10px', borderRadius: '10px' }}>
@@ -2639,6 +3355,10 @@ export default function Home() {
                 <div>
                   <label style={{ fontSize: '12px', fontWeight: '700' }}>Strava #tag</label>
                   <input value={newSkiData.tag} onChange={(e) => setNewSkiData({ ...newSkiData, tag: e.target.value })} style={{ width: '100%', border: '1.5px solid #cbd5e1', padding: '10px', borderRadius: '10px', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: '700' }}>Slip / Struktur</label>
+                  <input placeholder="F.eks. M61" value={newSkiData.grind} onChange={(e) => setNewSkiData({ ...newSkiData, grind: e.target.value })} style={{ width: '100%', border: '1.5px solid #cbd5e1', padding: '10px', borderRadius: '10px', boxSizing: 'border-box' }} />
                 </div>
               </div>
 
@@ -2662,6 +3382,20 @@ export default function Home() {
                   <label style={{ fontSize: '11px', fontWeight: '700', color: '#ff5500' }}>FBW (Fullvekt mm)</label>
                   <input value={newSkiData.fbw} onChange={(e) => setNewSkiData({ ...newSkiData, fbw: e.target.value })} style={{ width: '100%', border: '1px solid #cbd5e1', padding: '6px', borderRadius: '6px', boxSizing: 'border-box' }} />
                 </div>
+              </div>
+
+              {/* KOMMENTAR / NOTATER / MERKNAD */}
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: '800', color: '#0f172a', display: 'block', marginBottom: '4px' }}>
+                  📝 Kommentar / Merknad / Slip-detaljer
+                </label>
+                <textarea
+                  rows="3"
+                  placeholder="F.eks. God allroundski, fungerer suverent på nysnø og tørrvoks..."
+                  value={newSkiData.notes || ''}
+                  onChange={(e) => setNewSkiData({ ...newSkiData, notes: e.target.value })}
+                  style={{ width: '100%', border: '1.5px solid #cbd5e1', padding: '10px', borderRadius: '10px', boxSizing: 'border-box', fontSize: '13px', lineHeight: 1.5 }}
+                />
               </div>
 
               <button type="submit" style={{ background: '#059669', color: '#ffffff', border: 'none', padding: '14px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer', fontSize: '15px' }}>
